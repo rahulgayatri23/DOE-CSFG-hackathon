@@ -1,0 +1,12 @@
+#!/bin/bash
+#Begin PBS directives for the job
+#PBS -A CSC190PORT
+#PBS -N gppJob
+#PBS -j oe
+#PBS -l walltime=0:30:00,nodes=1
+#####PBS -l gres=atlas1%atlas2
+#End PBS directives and begin shell commands
+cp /ccs/home/rgayatri/DOE-CSGF/gppKerSeq.ex $MEMBERWORK/csc190
+cd $MEMBERWORK/csc190
+date
+aprun -n 1 ./gppKerSeq.ex 512 2 512 20
