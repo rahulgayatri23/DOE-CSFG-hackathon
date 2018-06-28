@@ -139,20 +139,17 @@ void noflagOCC_solver(double wxt, std::complex<double> *wtilde_array, int my_igp
         std::complex<double> delw = wtilde_array[my_igp*ncouls+ig] * conj(wdiff) *rden; //*rden
         double delwr = real(delw * conj(delw));
 
-//        scha[ig] = mygpvar1 * aqsntemp[n1*ncouls+ig] * delw * I_eps_array[my_igp*ncouls+ig] ;
         scht += mygpvar1 * aqsntemp[n1*ncouls+ig] * delw * I_eps_array[my_igp*ncouls+ig] ;
     }
-//    for(int ig = 0; ig<ncouls; ++ig)
-//        scht += delw;
     
 //    for(int ig = 0; ig<ncouls; ++ig)
 //    {
-//        wdiff = wxt - wtilde_array[my_igp*ncouls+ig];
-//        wdiffr = real(wdiff * conj(wdiff));
-//        rden = 1/wdiffr;
+//        std::complex<double> wdiff = wxt - wtilde_array[my_igp*ncouls+ig];
+//        double wdiffr = real(wdiff * conj(wdiff));
+//        double rden = 1/wdiffr;
 //
-//        delw = wtilde_array[my_igp*ncouls+ig] * conj(wdiff) *rden; //*rden
-//        delwr = real(delw * conj(delw));
+//        std::complex<double> delw = wtilde_array[my_igp*ncouls+ig] * conj(wdiff) *rden; //*rden
+//        double delwr = real(delw * conj(delw));
 //
 //
 //        if((wdiffr > limittwo) && (delwr < limitone))
@@ -321,6 +318,7 @@ int main(int argc, char** argv)
 
 //#pragma omp parallel for default(shared) private(sch_array, ssx_array) firstprivate(ngpown, ncouls) schedule(dynamic) 
         for(int my_igp=0; my_igp<ngpown; ++my_igp)
+        {
         
             int indigp = inv_igp_index[my_igp];
             int igp = indinv[indigp];
