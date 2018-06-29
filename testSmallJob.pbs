@@ -4,10 +4,17 @@
 #PBS -N gppJob
 #PBS -j oe
 #PBS -l walltime=0:30:00,nodes=1
-#####PBS -l gres=atlas1%atlas2
+
 #End PBS directives and begin shell commands
-cp /ccs/home/rgayatri/DOE-CSGF/gppKerSeq.ex $MEMBERWORK/csc190
+
+smallInput="512 2 2048 20"
+EXEC=gppOpenMP3
+
+cp /ccs/home/rgayatri/DOE-CSGF/${EXEC}.ex $MEMBERWORK/csc190
 cd $MEMBERWORK/csc190
 date
+
+#aprun -n 1 ./${EXEC}.ex ${smallInput}
+
 export OMP_NUM_THREADS=16
-aprun -n 1 -d 16 ./gppKerSeq.ex 512 2 512 20
+aprun -n 1 -d 16 ./${EXEC}.ex ${smallInput}

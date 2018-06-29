@@ -132,16 +132,14 @@ void noflagOCC_solver(double wxt, std::complex<double> *wtilde_array, int my_igp
 #pragma ivdep
     for(int ig = 0; ig<ncouls; ++ig)
     {
-        wdiff = wtilde_array[my_igp*ncouls+ig]; // still dont know how to avoid the vectorization break that occurs due to wxt-
+        wdiff = wxt - wtilde_array[my_igp*ncouls+ig];
         wdiffr = real(wdiff * conj(wdiff));
         rden = 1/wdiffr;
 
-        delw = wtilde_array[my_igp*ncouls+ig] * conj(wdiff) *rden; 
+        delw = wtilde_array[my_igp*ncouls+ig] * conj(wdiff) *rden; //*rden
         delwr = real(delw * conj(delw));
 
-//        if((wdiffr > limittwo) && (delwr < limitone))
         scha[ig] = mygpvar1 * aqsntemp[n1*ncouls+ig] * delw * I_eps_array[my_igp*ncouls+ig] ;
-
     }
     for(int ig = 0; ig<ncouls; ++ig)
         scht += scha[ig];
@@ -159,8 +157,9 @@ void noflagOCC_solver(double wxt, std::complex<double> *wtilde_array, int my_igp
 ////        if((wdiffr > limittwo) && (delwr < limitone))
 //            scha[ig] = mygpvar1 * aqsntemp[n1*ncouls+ig] * delw * I_eps_array[my_igp*ncouls+ig] ;
 //
-//        scht += scha[ig];
 //    }
+//    for(int ig = 0; ig<ncouls; ++ig)
+//        scht += scha[ig];
 }
 
 int main(int argc, char** argv)

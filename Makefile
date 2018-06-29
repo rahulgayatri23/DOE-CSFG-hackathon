@@ -1,5 +1,7 @@
-EXE = gppKerSeq.ex
-SRC = gppKerSeq.cpp 
+#EXE = gppKerSeq.ex
+#SRC = gppKerSeq.cpp 
+EXE = gppOpenMP3.ex
+SRC = gppOpenMP3.cpp 
 
 CXX = CC
 
