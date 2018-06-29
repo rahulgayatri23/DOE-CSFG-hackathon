@@ -188,8 +188,6 @@ int main(int argc, char** argv)
     double dw = 1;
     int nstart = 0, nend = 3;
 
-    int inv_igp_index[ngpown];
-    int indinv[ncouls];
 
 
     double to1 = 1e-6;
@@ -217,50 +215,23 @@ int main(int argc, char** argv)
         << "\t limittwo = " << limittwo << endl;
 
 
-    //ALLOCATE statements from fortran gppkernel.
-
     std::complex<double> expr0( 0.0 , 0.0);
     std::complex<double> expr( 0.5 , 0.5);
     std::complex<double> achtemp[3];
     std::complex<double> asxtemp[3];
+    double wx_array[3];
+
+    // Memory allocation
     std::complex<double> *acht_n1_loc = new std::complex<double> [number_bands];
-
     std::complex<double> *aqsmtemp = new std::complex<double> [number_bands*ncouls];
-//    std::complex<double> **aqsmtemp;
-//    {
-//        aqsmtemp = new std::complex<double> *[number_bands];
-//        for(int i=0; i<number_bands; i++)
-//            aqsmtemp[i] = new std::complex<double>[ncouls] ;
-//    }
-
     std::complex<double> *aqsntemp = new std::complex<double> [number_bands*ncouls];
-//    std::complex<double> **aqsntemp;
-//    {
-//        aqsntemp = new std::complex<double> *[number_bands];
-//        for(int i=0; i<number_bands; i++)
-//            aqsntemp[i] = new std::complex<double>[ncouls];
-//    }
-//
     std::complex<double> *I_eps_array = new std::complex<double> [ngpown*ncouls];
-//    std::complex<double> **I_eps_array;
-//    {
-//        I_eps_array = new std::complex<double> *[ngpown];
-//        for(int i=0; i<ngpown; i++)
-//            I_eps_array[i] = new std::complex<double>[ncouls];
-//    }
-//
     std::complex<double> *wtilde_array = new std::complex<double> [ngpown*ncouls];
 
+    int *inv_igp_index = new int[ngpown];
+    int *indinv = new int[ncouls];
+    double *vcoul = new double[ncouls];
 
-//    std::complex<double> **wtilde_array;
-//    {
-//        wtilde_array = new std::complex<double> *[ngpown];
-//        for(int i=0; i<ngpown; i++)
-//            wtilde_array[i] = new std::complex<double>[ncouls];
-//    }
-//
-    double vcoul[ncouls];
-    double wx_array[3];
 
     std::complex<double> achstemp = std::complex<double>(0.0, 0.0);
     std::complex<double> ssx_array[3], \
@@ -397,8 +368,9 @@ int main(int argc, char** argv)
     free(aqsmtemp);
     free(aqsntemp);
     free(I_eps_array);
-    free(scha);
-    free(ssxa);
+    free(inv_igp_index);
+    free(indinv);
+    free(vcoul);
 
     return 0;
 }
