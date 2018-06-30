@@ -13,13 +13,13 @@ LINK = ${CXX}
 
 ifeq ($(CXX),CC)
 #cray flags
-#    CXXFLAGS=-O2 -hlist=a
+    CXXFLAGS=-O2 -hlist=a
 
 #intel 
-	CXXFLAGS=-O3 -qopenmp -std=c++11 -qopt-report=5
-	CXXFLAGS+=-xCORE_AVX2
-#	CXXFLAGS+=-xMIC_AVX512
-	LINKFLAGS=-qopenmp -std=c++11
+#	CXXFLAGS=-O3 -qopenmp -std=c++11 -qopt-report=5
+#	CXXFLAGS+=-xCORE_AVX2
+##	CXXFLAGS+=-xMIC_AVX512
+#	LINKFLAGS=-qopenmp -std=c++11
 endif 
 
 OBJ = $(SRC:.cpp=.o)

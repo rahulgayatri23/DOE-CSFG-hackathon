@@ -8,7 +8,8 @@
 #End PBS directives and begin shell commands
 
 smallInput="512 2 2048 20"
-EXEC=gppOpenMP3
+EXEC=gppComplex
+#EXEC=gppOpenMP3
 
 cp /ccs/home/rgayatri/DOE-CSGF/${EXEC}.ex $MEMBERWORK/csc190
 cd $MEMBERWORK/csc190
