@@ -143,7 +143,6 @@ void noflagOCC_solver(double wxt, std::complex<double> *wtilde_array, int my_igp
         scht_loc += mygpvar1 * aqsntemp[n1*ncouls+ig] * delw * I_eps_array[my_igp*ncouls+ig] ;
     }
 
-#pragma omp critical
     scht = scht_loc;
     
 //    for(int ig = 0; ig<ncouls; ++ig)
@@ -178,9 +177,6 @@ int main(int argc, char** argv)
     int ncouls = atoi(argv[3]);
     int nodes_per_group = atoi(argv[4]);
 
-    int tid, NTHREADS; // OpenMP related threading variables.
-
-
     int npes = 1; //Represents the number of ranks per node
     int ngpown = ncouls / (nodes_per_group * npes); //Number of gvectors per mpi task
 
@@ -188,7 +184,14 @@ int main(int argc, char** argv)
     double dw = 1;
     int nstart = 0, nend = 3;
 
-
+    int tid, numThreads;
+#pragma omp parallel shared(numThreads) private(tid)
+{
+    tid = omp_get_thread_num();
+    if(tid == 0)
+    numThreads = omp_get_num_threads();
+}
+    std::cout << "Number of OpenMP Threads = " << numThreads << endl;
 
     double to1 = 1e-6;
 
@@ -214,7 +217,6 @@ int main(int argc, char** argv)
         << "\t limitone = " << limitone \
         << "\t limittwo = " << limittwo << endl;
 
-
     std::complex<double> expr0( 0.0 , 0.0);
     std::complex<double> expr( 0.5 , 0.5);
     std::complex<double> achtemp[3];
@@ -231,6 +233,7 @@ int main(int argc, char** argv)
     int *inv_igp_index = new int[ngpown];
     int *indinv = new int[ncouls];
     double *vcoul = new double[ncouls];
+    std::complex<double> *achtempThread = new std::complex<double> [numThreads * 3];
 
 
     std::complex<double> achstemp = std::complex<double>(0.0, 0.0);
@@ -275,13 +278,20 @@ int main(int argc, char** argv)
     for(int ig=0, tmp=1; ig<ncouls; ++ig,tmp++)
         indinv[ig] = ig;
 
+   for(int n=0; n<numThreads; ++n)
+   {
+       for(int iw=0; iw<3; ++iw)
+       {
+           achtempThread[n*3 + iw] = expr0;
+           achtemp[iw] = expr0;
+       }
+   }
 
     auto startTimer = std::chrono::high_resolution_clock::now();
 
     for(int n1 = 0; n1<number_bands; ++n1) // This for loop at the end cheddam
     {
         flag_occ = n1 < nvband;
-
 
         reduce_achstemp(n1, inv_igp_index, ncouls,aqsmtemp, aqsntemp, I_eps_array, achstemp, indinv, ngpown, vcoul);
 
@@ -291,15 +301,15 @@ int main(int argc, char** argv)
             if(abs(wx_array[iw]) < to1) wx_array[iw] = to1;
         }
 
-#pragma omp parallel for default(shared) private(sch_array, ssx_array) firstprivate(ngpown, ncouls) schedule(dynamic) 
+#pragma omp parallel for default(shared) private(scht, sch_array, ssx_array, tid) firstprivate(ngpown, ncouls) schedule(dynamic) 
         for(int my_igp=0; my_igp<ngpown; ++my_igp)
         {
-        
             int indigp = inv_igp_index[my_igp];
             int igp = indinv[indigp];
             if(indigp == ncouls)
                 igp = ncouls-1;
             int igmax;
+            tid = omp_get_thread_num();
 
             if(!(igp > ncouls || igp < 0)) {
                 igmax = ncouls;
@@ -324,7 +334,6 @@ int main(int argc, char** argv)
             }
             else
             {
-                int igblk = 512;
                 for(int iw=nstart; iw<nend; ++iw)
                 {
                         scht = ssxt = expr0;
@@ -332,6 +341,7 @@ int main(int argc, char** argv)
 
                         noflagOCC_solver(wxt, wtilde_array, my_igp, n1, aqsmtemp, aqsntemp, I_eps_array, ssxt, scht, igmax, ncouls, igp, scha);
 
+#pragma omp critical
                         sch_array[iw] +=(double) 0.5*scht;
                 }
             }
@@ -340,12 +350,12 @@ int main(int argc, char** argv)
             {
                 for(int iw=nstart; iw<nend; ++iw)
                 {
-                    asxtemp[iw] += ssx_array[iw] * occ * vcoul[igp]; //occ does not change and is 1.00 so why not remove it.
+                    asxtemp[iw] += ssx_array[iw] * occ * vcoul[igp];
                 }
             }
 
             for(int iw=nstart; iw<nend; ++iw)
-                achtemp[iw] += sch_array[iw] * vcoul[igp];
+                achtempThread[tid*3 + iw] += sch_array[iw] * vcoul[igp];
 
             acht_n1_loc[n1] += sch_array[2] * vcoul[igp];
 
@@ -354,6 +364,11 @@ int main(int argc, char** argv)
     }
     std::chrono::duration<double> elapsedTimer = std::chrono::high_resolution_clock::now() - startTimer;
 
+    for(int n = 0; n < numThreads; ++n)
+    {
+        for(int iw = 0; iw < 3; ++iw)
+            achtemp[iw] += achtempThread[n*3 + iw];
+    }
 
 
     double end_time = omp_get_wtime(); //End timing here
@@ -371,6 +386,7 @@ int main(int argc, char** argv)
     free(inv_igp_index);
     free(indinv);
     free(vcoul);
+    free(achtempThread);
 
     return 0;
 }

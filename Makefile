@@ -1,11 +1,18 @@
+#Sequential version
 #EXE = gppKerSeq.ex
 #SRC = gppKerSeq.cpp 
-#EXE = gppOpenMP3.ex
-#SRC = gppOpenMP3.cpp 
+
+#OpenMP3.5 version
+EXE = gppOpenMP3.ex
+SRC = gppOpenMP3.cpp 
+
+#MPI version
 #EXE = gppMPIOpenMP3.ex
 #SRC = gppMPIOpenMP3.cpp 
-EXE = gppComplex.ex
-SRC = gppComplex.cpp 
+
+#Complex class + gpp version
+#EXE = gppComplex.ex
+#SRC = gppComplex.cpp 
 
 CXX = CC
 
