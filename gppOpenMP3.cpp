@@ -1,3 +1,8 @@
+/*
+OpenMP3.5 version of the GPP code. All the double dimension arrays are represented as single dim and indexed accordingly for performance.
+noflagOCC_solver is the main loop in which most of the computation happens.
+The achtemp array, which holds the final output is created for each thread and the results are finally accumulated into one single array. This is done in order to avoid the "critical" which might otherwise be needed to maintain correctness. 
+*/
 #include <iostream>
 #include <cstdlib>
 #include <memory>
@@ -129,38 +134,18 @@ void noflagOCC_solver(double wxt, std::complex<double> *wtilde_array, int my_igp
     std::complex<double> mygpvar1 = std::conj(aqsmtemp[n1*ncouls+igp]);
     std::complex<double> scht_loc(0.00, 0.00);
     
-//#pragma simd
-//#pragma ivdep
     for(int ig = 0; ig<ncouls; ++ig)
     {
         std::complex<double> wdiff = wxt - wtilde_array[my_igp*ncouls+ig];
         double wdiffr = real(wdiff * conj(wdiff));
         double rden = 1/wdiffr;
 
-        std::complex<double> delw = wtilde_array[my_igp*ncouls+ig] * conj(wdiff) *rden; //*rden
+        std::complex<double> delw = wtilde_array[my_igp*ncouls+ig] * conj(wdiff) *rden; 
         double delwr = real(delw * conj(delw));
 
         scht_loc += mygpvar1 * aqsntemp[n1*ncouls+ig] * delw * I_eps_array[my_igp*ncouls+ig] ;
     }
-
     scht = scht_loc;
-    
-//    for(int ig = 0; ig<ncouls; ++ig)
-//    {
-//        std::complex<double> wdiff = wxt - wtilde_array[my_igp*ncouls+ig];
-//        double wdiffr = real(wdiff * conj(wdiff));
-//        double rden = 1/wdiffr;
-//
-//        std::complex<double> delw = wtilde_array[my_igp*ncouls+ig] * conj(wdiff) *rden; //*rden
-//        double delwr = real(delw * conj(delw));
-//
-//
-//        if((wdiffr > limittwo) && (delwr < limitone))
-//            scha[ig] = mygpvar1 * aqsntemp[n1*ncouls+ig] * delw * I_eps_array[my_igp*ncouls+ig] ;
-//
-//    }
-//    for(int ig = 0; ig<ncouls; ++ig)
-//        scht += scha[ig];
 }
 
 int main(int argc, char** argv)
@@ -177,9 +162,8 @@ int main(int argc, char** argv)
     int ncouls = atoi(argv[3]);
     int nodes_per_group = atoi(argv[4]);
 
-    int npes = 1; //Represents the number of ranks per node
-    int ngpown = ncouls / (nodes_per_group * npes); //Number of gvectors per mpi task
-
+    int npes = 1; 
+    int ngpown = ncouls / (nodes_per_group * npes); 
     double e_lk = 10;
     double dw = 1;
     int nstart = 0, nend = 3;
@@ -200,9 +184,7 @@ int main(int argc, char** argv)
     double limitone = 1.0/(to1*4.0);
     double limittwo = pow(0.5,2);
 
-    double e_n1kq= 6.0; //This in the fortran code is derived through the double dimenrsion array ekq whose 2nd dimension is 1 and all the elements in the array have the same value
-//    MyAllocator<64> alloc;
-
+    double e_n1kq= 6.0; 
 
     //Printing out the params passed.
     std::cout << "number_bands = " << number_bands \
@@ -341,7 +323,6 @@ int main(int argc, char** argv)
 
                         noflagOCC_solver(wxt, wtilde_array, my_igp, n1, aqsmtemp, aqsntemp, I_eps_array, ssxt, scht, igmax, ncouls, igp, scha);
 
-#pragma omp critical
                         sch_array[iw] +=(double) 0.5*scht;
                 }
             }
