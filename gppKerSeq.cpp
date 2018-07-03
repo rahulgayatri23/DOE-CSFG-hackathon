@@ -61,7 +61,6 @@ void ssxt_scht_solver(double wxt, int igp, int my_igp, int ig, std::complex<doub
 void reduce_achstemp(int n1, int* inv_igp_index, int ncouls, std::complex<double> *aqsmtemp, std::complex<double> *aqsntemp, std::complex<double> *I_eps_array, std::complex<double>& achstemp, int ngpown, double* vcoul)
 {
     double to1 = 1e-6;
-    int igmax;
     std::complex<double> schstemp(0.0, 0.0);;
     for(int my_igp = 0; my_igp< ngpown; my_igp++)
     {
@@ -69,14 +68,11 @@ void reduce_achstemp(int n1, int* inv_igp_index, int ncouls, std::complex<double
         std::complex<double> matngmatmgp(0.0, 0.0);
         std::complex<double> matngpmatmg(0.0, 0.0);
         std::complex<double> halfinvwtilde, delw, ssx, sch, wdiff, cden , eden, mygpvar1, mygpvar2;
-        int igmax;
         int igp = inv_igp_index[my_igp];
         if(igp == ncouls)
             igp = ncouls-1;
 
         if(!(igp > ncouls || igp < 0)){
-
-        igmax = ncouls;
 
         std::complex<double> mygpvar1 = std::conj(aqsmtemp[n1*ncouls+igp]);
         std::complex<double> mygpvar2 = aqsntemp[n1*ncouls+igp];
@@ -89,7 +85,7 @@ void reduce_achstemp(int n1, int* inv_igp_index, int ncouls, std::complex<double
         }
         else
         {
-            for(int ig=1; ig<igmax; ++ig)
+            for(int ig=1; ig<ncouls; ++ig)
                 schstemp = schstemp - aqsntemp[n1*ncouls+igp] * I_eps_array[my_igp*ncouls+ig] * mygpvar1;
         }
         achstemp += schstemp * vcoul[igp] *(double) 0.5;
@@ -98,11 +94,11 @@ void reduce_achstemp(int n1, int* inv_igp_index, int ncouls, std::complex<double
 
 
 
-void flagOCC_solver(double wxt, std::complex<double> *wtilde_array, int my_igp, int n1, std::complex<double> *aqsmtemp, std::complex<double> *aqsntemp, std::complex<double> *I_eps_array, std::complex<double> &ssxt, std::complex<double> &scht, int igmax, int ncouls, int igp, std::complex<double> *ssxa, std::complex<double>* scha)
+void flagOCC_solver(double wxt, std::complex<double> *wtilde_array, int my_igp, int n1, std::complex<double> *aqsmtemp, std::complex<double> *aqsntemp, std::complex<double> *I_eps_array, std::complex<double> &ssxt, std::complex<double> &scht, int ncouls, int igp, std::complex<double> *ssxa, std::complex<double>* scha)
 {
     std::complex<double> matngmatmgp = std::complex<double>(0.0, 0.0);
     std::complex<double> matngpmatmg = std::complex<double>(0.0, 0.0);
-    for(int ig=0; ig<igmax; ++ig)
+    for(int ig=0; ig<ncouls; ++ig)
     {
         std::complex<double> wtilde = wtilde_array[my_igp*ncouls+ig];
         std::complex<double> wtilde2 = std::pow(wtilde,2);
@@ -118,7 +114,7 @@ void flagOCC_solver(double wxt, std::complex<double> *wtilde_array, int my_igp, 
     }
 }
 
-void noflagOCC_solver(double wxt, std::complex<double> *wtilde_array, int my_igp, int n1, std::complex<double> *aqsmtemp, std::complex<double> *aqsntemp, std::complex<double> *I_eps_array, std::complex<double> &ssxt, std::complex<double> &scht, int igmax, int ncouls, int igp, std::complex<double> *scha)
+void noflagOCC_solver(double wxt, std::complex<double> *wtilde_array, int my_igp, int n1, std::complex<double> *aqsmtemp, std::complex<double> *aqsntemp, std::complex<double> *I_eps_array, std::complex<double> &ssxt, std::complex<double> &scht, int ncouls, int igp, std::complex<double> *scha)
 {
     double to1 = 1e-6;
     double sexcut = 4.0;
@@ -128,8 +124,6 @@ void noflagOCC_solver(double wxt, std::complex<double> *wtilde_array, int my_igp
     std::complex<double> mygpvar1 = std::conj(aqsmtemp[n1*ncouls+igp]);
     std::complex<double> scht_loc(0.00, 0.00);
     
-//#pragma simd
-//#pragma ivdep
     for(int ig = 0; ig<ncouls; ++ig)
     {
         std::complex<double> wdiff = wxt - wtilde_array[my_igp*ncouls+ig];
@@ -143,23 +137,6 @@ void noflagOCC_solver(double wxt, std::complex<double> *wtilde_array, int my_igp
     }
 
     scht = scht_loc;
-    
-//    for(int ig = 0; ig<ncouls; ++ig)
-//    {
-//        std::complex<double> wdiff = wxt - wtilde_array[my_igp*ncouls+ig];
-//        double wdiffr = real(wdiff * conj(wdiff));
-//        double rden = 1/wdiffr;
-//
-//        std::complex<double> delw = wtilde_array[my_igp*ncouls+ig] * conj(wdiff) *rden; //*rden
-//        double delwr = real(delw * conj(delw));
-//
-//
-//        if((wdiffr > limittwo) && (delwr < limitone))
-//            scha[ig] = mygpvar1 * aqsntemp[n1*ncouls+ig] * delw * I_eps_array[my_igp*ncouls+ig] ;
-//
-//    }
-//    for(int ig = 0; ig<ncouls; ++ig)
-//        scht += scha[ig];
 }
 
 int main(int argc, char** argv)
@@ -191,8 +168,7 @@ int main(int argc, char** argv)
     double limitone = 1.0/(to1*4.0);
     double limittwo = pow(0.5,2);
 
-    double e_n1kq= 6.0; //This in the fortran code is derived through the double dimenrsion array ekq whose 2nd dimension is 1 and all the elements in the array have the same value
-//    MyAllocator<64> alloc;
+    double e_n1kq= 6.0; 
 
 
     //Printing out the params passed.
@@ -288,10 +264,6 @@ int main(int argc, char** argv)
             int igp = inv_igp_index[my_igp];
             if(igp == ncouls)
                 igp = ncouls-1;
-            int igmax;
-
-            if(!(igp > ncouls || igp < 0)) {
-                igmax = ncouls;
 
             for(int i=0; i<3; i++)
             {
@@ -305,7 +277,7 @@ int main(int argc, char** argv)
                 {
                     scht = ssxt = expr0;
                     wxt = wx_array[iw];
-                    flagOCC_solver(wxt, wtilde_array, my_igp, n1, aqsmtemp, aqsntemp, I_eps_array, ssxt, scht, igmax, ncouls, igp, ssxa, scha);
+                    flagOCC_solver(wxt, wtilde_array, my_igp, n1, aqsmtemp, aqsntemp, I_eps_array, ssxt, scht, ncouls, igp, ssxa, scha);
 
                     ssx_array[iw] += ssxt;
                     sch_array[iw] +=(double) 0.5*scht;
@@ -318,7 +290,7 @@ int main(int argc, char** argv)
                         scht = ssxt = expr0;
                         wxt = wx_array[iw];
 
-                        noflagOCC_solver(wxt, wtilde_array, my_igp, n1, aqsmtemp, aqsntemp, I_eps_array, ssxt, scht, igmax, ncouls, igp, scha);
+                        noflagOCC_solver(wxt, wtilde_array, my_igp, n1, aqsmtemp, aqsntemp, I_eps_array, ssxt, scht, ncouls, igp, scha);
 
                         sch_array[iw] +=(double) 0.5*scht;
                 }
@@ -337,7 +309,6 @@ int main(int argc, char** argv)
 
             acht_n1_loc[n1] += sch_array[2] * vcoul[igp];
 
-            } //for the if-loop to avoid break inside an openmp pragma statment
         }
     }
     std::chrono::duration<double> elapsedTimer = std::chrono::high_resolution_clock::now() - startTimer;

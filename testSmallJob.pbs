@@ -6,25 +6,32 @@
 #PBS -l walltime=0:30:00,nodes=1
 
 #End PBS directives and begin shell commands
+
+#What Version of the code are you running : 
+#VER=SEQ
+VER=OpenMP
+#VER=MPI
+#VER=ComplexClass
+
 smallInput="512 2 800 20"
 num_mpi_ranks=1
 num_threads=1
 
-
-#Sequential version
-#EXEC=gppKerSeq
-
-#OpenMP3.5 version
-#EXEC=gppOpenMP3
-#num_threads=16
-
-#MPI version
-#EXEC=gppMPI
-#num_mpi_ranks=8
-
-#Complex class + gpp version
-EXEC=gppComplex
-num_threads=16
+if [ "${VER}" = "SEQ" ]; then
+    EXEC=gppKerSeq
+fi
+if [ "${VER}" = "OpenMP" ]; then
+    EXEC=gppOpenMP3
+    num_threads=16
+fi
+if [ "${VER}" = "MPI" ]; then
+    EXEC=gppMPI
+    num_mpi_ranks=8
+fi
+if [ "${VER}" = "ComplexClass" ]; then
+    EXEC=gppComplex
+    num_threads=16
+fi
 
 cp /ccs/home/rgayatri/DOE-CSGF/${EXEC}.ex $MEMBERWORK/csc190
 cd $MEMBERWORK/csc190
@@ -34,5 +41,6 @@ export OMP_NUM_THREADS=${num_threads}
 aprun_command="aprun -n ${num_mpi_ranks} -d ${num_threads}"
 echo "The command we run is:"
 echo "${aprun_command} ./${EXEC}.ex ${smallInput}"
+echo "********************************************"
 
 ${aprun_command} ./${EXEC}.ex ${smallInput}

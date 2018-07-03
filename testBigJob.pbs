@@ -13,7 +13,7 @@ VER=OpenMP
 #VER=MPI
 #VER=ComplexClass
 
-smallInput="512 2 1600 20"
+smallInput="512 2 3200 20"
 num_mpi_ranks=1
 num_threads=1
 
