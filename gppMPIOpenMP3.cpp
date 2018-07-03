@@ -4,8 +4,8 @@
 #include <iomanip>
 #include <cmath>
 #include <complex>
-#include <omp.h>
 #include <chrono>
+#include <mpi.h>
 
 using namespace std;
 
@@ -171,17 +171,22 @@ int main(int argc, char** argv)
         std::cout << " ./a.out <number_bands> <number_valence_bands> <number_plane_waves> <matrix_divider> " << endl;
         exit (0);
     }
+
+    int mpiSize = 1, mpiRank = 0;
+    MPI_Init(&argc, &argv);
+    MPI_Comm_size(MPI_COMM_WORLD, &mpiSize);
+    MPI_Comm_rank(MPI_COMM_WORLD, &mpiRank);
+
     int number_bands = atoi(argv[1]);
     int nvband = atoi(argv[2]);
     int ncouls = atoi(argv[3]);
     int nodes_per_group = atoi(argv[4]);
+    int nstart = 0, nend = 3;
 
-    int npes = 1; //Represents the number of ranks per node
+    int npes = mpiSize; //Represents the number of ranks per node
     int ngpown = ncouls / (nodes_per_group * npes); //Number of gvectors per mpi task
-
     double e_lk = 10;
     double dw = 1;
-    int nstart = 0, nend = 3;
 
     int tid, numThreads;
     double to1 = 1e-6;
@@ -193,6 +198,24 @@ int main(int argc, char** argv)
 
     double e_n1kq= 6.0; //This in the fortran code is derived through the double dimenrsion array ekq whose 2nd dimension is 1 and all the elements in the array have the same value
 //    MyAllocator<64> alloc;
+
+    //Printing out the params passed.
+    if(mpiRank == 0)
+    {
+        std::cout << "******************Running pure MPI version of the code with : *************************" << std::endl;
+        std::cout << "mpiSize = " << mpiSize << "\t number_bands = " << number_bands \
+            << "\t nvband = " << nvband \
+            << "\t ncouls = " << ncouls \
+            << "\t nodes_per_group  = " << nodes_per_group \
+            << "\t ngpown = " << ngpown \
+            << "\t nend = " << nend \
+            << "\t nstart = " << nstart \
+            << "\t gamma = " << gamma \
+            << "\t sexcut = " << sexcut \
+            << "\t limitone = " << limitone \
+            << "\t limittwo = " << limittwo << endl;
+    }
+
 
 
     //Printing out the params passed.
@@ -252,21 +275,23 @@ int main(int argc, char** argv)
    for(int i=0; i<ngpown; i++)
        for(int j=0; j<ncouls; j++)
        {
-           I_eps_array[i*ncouls+j] = ((double)(i+j))*expr;
-           wtilde_array[i*ncouls+j] = ((double)(i+j))*expr;
+           int global_i = ngpown*mpiRank + i;
+           I_eps_array[i*ncouls+j] = ((double)(global_i+j))*expr;
+           wtilde_array[i*ncouls+j] = ((double)(global_i+j))*expr;
        }
 
    for(int i=0; i<ncouls; i++)
        vcoul[i] = 1.0*i;
 
 
-    for(int ig=0, tmp=1; ig < ngpown; ++ig,tmp++)
-        inv_igp_index[ig] = (ig+1) * ncouls / ngpown;
+    for(int ig=0; ig < ngpown; ++ig)
+    {
+       int global_ig = ngpown*mpiRank + ig;
+        inv_igp_index[ig] = (global_ig+1) * ncouls / (ngpown*npes);
+    }
 
        for(int iw=0; iw<3; ++iw)
-       {
            achtemp[iw] = expr0;
-       }
 
     auto startTimer = std::chrono::high_resolution_clock::now();
 
@@ -335,18 +360,43 @@ int main(int argc, char** argv)
             for(int iw=nstart; iw<nend; ++iw)
                 achtemp[iw] += sch_array[iw] * vcoul[igp];
 
+
             acht_n1_loc[n1] += sch_array[2] * vcoul[igp];
 
             } //for the if-loop to avoid break inside an openmp pragma statment
-        }
-    }
+        } //ngpown
+    } //number_bands n1
     std::chrono::duration<double> elapsedTimer = std::chrono::high_resolution_clock::now() - startTimer;
 
-
+    double achtemp_re[3], achtemp_im[3];
     for(int iw=nstart; iw<nend; ++iw)
-        cout << "achtemp[" << iw << "] = " << std::setprecision(15) << achtemp[iw] << endl;
+    {
+        achtemp_re[iw] = real(achtemp[iw]);
+        achtemp_im[iw] = imag(achtemp[iw]);
+    }
 
-    cout << "********** Time Taken **********= " << elapsedTimer.count() << " secs" << endl;
+
+    if(mpiRank == 0)
+    {
+        MPI_Reduce(MPI_IN_PLACE, achtemp_re, 3, MPI_DOUBLE, MPI_SUM, 0, MPI_COMM_WORLD);
+        MPI_Reduce(MPI_IN_PLACE, achtemp_im, 3, MPI_DOUBLE, MPI_SUM, 0, MPI_COMM_WORLD);
+    }
+    else
+    {
+        MPI_Reduce(achtemp_re, achtemp_re, 3, MPI_DOUBLE, MPI_SUM, 0, MPI_COMM_WORLD);
+        MPI_Reduce(achtemp_im, achtemp_im, 3, MPI_DOUBLE, MPI_SUM, 0, MPI_COMM_WORLD);
+    }
+    
+
+
+    if(mpiRank == 0)
+    {
+        for(int iw=nstart; iw<nend; ++iw)
+            cout << "achtemp[" << iw << "] = (" << achtemp_re[iw] << ", " << achtemp_im[iw] << ") " << endl;
+
+        cout << "********** Time Taken **********= " << elapsedTimer.count() << " secs" << endl;
+    }
+
 
     free(acht_n1_loc);
     free(wtilde_array);
@@ -355,6 +405,8 @@ int main(int argc, char** argv)
     free(I_eps_array);
     free(inv_igp_index);
     free(vcoul);
+
+    MPI_Finalize();
 
     return 0;
 }

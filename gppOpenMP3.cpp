@@ -58,7 +58,7 @@ void ssxt_scht_solver(double wxt, int igp, int my_igp, int ig, std::complex<doub
     scha = matngmatmgp*sch;
 }
 
-void reduce_achstemp(int n1, int* inv_igp_index, int ncouls, std::complex<double> *aqsmtemp, std::complex<double> *aqsntemp, std::complex<double> *I_eps_array, std::complex<double>& achstemp,  int* indinv, int ngpown, double* vcoul)
+void reduce_achstemp(int n1, int* inv_igp_index, int ncouls, std::complex<double> *aqsmtemp, std::complex<double> *aqsntemp, std::complex<double> *I_eps_array, std::complex<double>& achstemp, int ngpown, double* vcoul)
 {
     double to1 = 1e-6;
     int igmax;
@@ -70,9 +70,8 @@ void reduce_achstemp(int n1, int* inv_igp_index, int ncouls, std::complex<double
         std::complex<double> matngpmatmg(0.0, 0.0);
         std::complex<double> halfinvwtilde, delw, ssx, sch, wdiff, cden , eden, mygpvar1, mygpvar2;
         int igmax;
-        int indigp = inv_igp_index[my_igp];
-        int igp = indinv[indigp];
-        if(indigp == ncouls)
+        int igp = inv_igp_index[my_igp];
+        if(igp == ncouls)
             igp = ncouls-1;
 
         if(!(igp > ncouls || igp < 0)){
@@ -129,8 +128,6 @@ void noflagOCC_solver(double wxt, std::complex<double> *wtilde_array, int my_igp
     std::complex<double> mygpvar1 = std::conj(aqsmtemp[n1*ncouls+igp]);
     std::complex<double> scht_loc(0.00, 0.00);
     
-//#pragma simd
-//#pragma ivdep
     for(int ig = 0; ig<ncouls; ++ig)
     {
         std::complex<double> wdiff = wxt - wtilde_array[my_igp*ncouls+ig];
@@ -144,23 +141,6 @@ void noflagOCC_solver(double wxt, std::complex<double> *wtilde_array, int my_igp
     }
 
     scht = scht_loc;
-    
-//    for(int ig = 0; ig<ncouls; ++ig)
-//    {
-//        std::complex<double> wdiff = wxt - wtilde_array[my_igp*ncouls+ig];
-//        double wdiffr = real(wdiff * conj(wdiff));
-//        double rden = 1/wdiffr;
-//
-//        std::complex<double> delw = wtilde_array[my_igp*ncouls+ig] * conj(wdiff) *rden; //*rden
-//        double delwr = real(delw * conj(delw));
-//
-//
-//        if((wdiffr > limittwo) && (delwr < limitone))
-//            scha[ig] = mygpvar1 * aqsntemp[n1*ncouls+ig] * delw * I_eps_array[my_igp*ncouls+ig] ;
-//
-//    }
-//    for(int ig = 0; ig<ncouls; ++ig)
-//        scht += scha[ig];
 }
 
 int main(int argc, char** argv)
@@ -169,7 +149,7 @@ int main(int argc, char** argv)
     if (argc != 5)
     {
         std::cout << "The correct form of input is : " << endl;
-        std::cout << " ./a.out <number_bands> <number_valence_bands> <number_plane_waves> <nodes_per_mpi_group> " << endl;
+        std::cout << " ./a.out <number_bands> <number_valence_bands> <number_plane_waves> <matrix_divider> " << endl;
         exit (0);
     }
     int number_bands = atoi(argv[1]);
@@ -183,15 +163,6 @@ int main(int argc, char** argv)
     double e_lk = 10;
     double dw = 1;
     int nstart = 0, nend = 3;
-
-    int tid, numThreads;
-#pragma omp parallel shared(numThreads) private(tid)
-{
-    tid = omp_get_thread_num();
-    if(tid == 0)
-    numThreads = omp_get_num_threads();
-}
-    std::cout << "Number of OpenMP Threads = " << numThreads << endl;
 
     double to1 = 1e-6;
 
@@ -231,10 +202,7 @@ int main(int argc, char** argv)
     std::complex<double> *wtilde_array = new std::complex<double> [ngpown*ncouls];
 
     int *inv_igp_index = new int[ngpown];
-    int *indinv = new int[ncouls];
     double *vcoul = new double[ncouls];
-    std::complex<double> *achtempThread = new std::complex<double> [numThreads * 3];
-
 
     std::complex<double> achstemp = std::complex<double>(0.0, 0.0);
     std::complex<double> ssx_array[3], \
@@ -255,37 +223,39 @@ int main(int argc, char** argv)
    for(int i=0; i<number_bands; i++)
        for(int j=0; j<ncouls; j++)
        {
-           aqsntemp[i*ncouls+j] = expr;
-           aqsmtemp[i*ncouls+j] = expr;
+           aqsntemp[i*ncouls+j] = ((double)(i+j))*expr;
+           aqsmtemp[i*ncouls+j] = ((double)(i+j))*expr;
        }
 
 
    for(int i=0; i<ngpown; i++)
        for(int j=0; j<ncouls; j++)
        {
-           I_eps_array[i*ncouls+j] = expr;
-           wtilde_array[i*ncouls+j] = expr;
+           I_eps_array[i*ncouls+j] = ((double)(i+j))*expr;
+           wtilde_array[i*ncouls+j] = ((double)(i+j))*expr;
        }
 
    for(int i=0; i<ncouls; i++)
-       vcoul[i] = 1.0;
+       vcoul[i] = 1.0*i;
 
 
     for(int ig=0, tmp=1; ig < ngpown; ++ig,tmp++)
         inv_igp_index[ig] = (ig+1) * ncouls / ngpown;
 
-    //Do not know yet what this array represents
-    for(int ig=0, tmp=1; ig<ncouls; ++ig,tmp++)
-        indinv[ig] = ig;
-
-   for(int n=0; n<numThreads; ++n)
-   {
        for(int iw=0; iw<3; ++iw)
        {
-           achtempThread[n*3 + iw] = expr0;
            achtemp[iw] = expr0;
        }
-   }
+
+      
+    int tid, numThreads;
+    #pragma omp parallel shared(numThreads) private(tid)
+    {
+            tid = omp_get_thread_num();
+            if(tid == 0)
+                numThreads = omp_get_num_threads();
+    }
+    std::cout << "Number of OpenMP Threads = " << numThreads << endl;
 
     auto startTimer = std::chrono::high_resolution_clock::now();
 
@@ -293,7 +263,7 @@ int main(int argc, char** argv)
     {
         flag_occ = n1 < nvband;
 
-        reduce_achstemp(n1, inv_igp_index, ncouls,aqsmtemp, aqsntemp, I_eps_array, achstemp, indinv, ngpown, vcoul);
+        reduce_achstemp(n1, inv_igp_index, ncouls,aqsmtemp, aqsntemp, I_eps_array, achstemp, ngpown, vcoul);
 
         for(int iw=nstart; iw<nend; ++iw)
         {
@@ -304,12 +274,11 @@ int main(int argc, char** argv)
 #pragma omp parallel for default(shared) private(scht, sch_array, ssx_array, tid) firstprivate(ngpown, ncouls) schedule(dynamic) 
         for(int my_igp=0; my_igp<ngpown; ++my_igp)
         {
-            int indigp = inv_igp_index[my_igp];
-            int igp = indinv[indigp];
-            if(indigp == ncouls)
+            //JRD changedthis
+            int igp = inv_igp_index[my_igp];
+            if(igp == ncouls)
                 igp = ncouls-1;
             int igmax;
-            tid = omp_get_thread_num();
 
             if(!(igp > ncouls || igp < 0)) {
                 igmax = ncouls;
@@ -341,7 +310,6 @@ int main(int argc, char** argv)
 
                         noflagOCC_solver(wxt, wtilde_array, my_igp, n1, aqsmtemp, aqsntemp, I_eps_array, ssxt, scht, igmax, ncouls, igp, scha);
 
-#pragma omp critical
                         sch_array[iw] +=(double) 0.5*scht;
                 }
             }
@@ -354,8 +322,11 @@ int main(int argc, char** argv)
                 }
             }
 
+#pragma omp critical
+{
             for(int iw=nstart; iw<nend; ++iw)
-                achtempThread[tid*3 + iw] += sch_array[iw] * vcoul[igp];
+                achtemp[iw] += sch_array[iw] * vcoul[igp];
+}
 
             acht_n1_loc[n1] += sch_array[2] * vcoul[igp];
 
@@ -364,14 +335,6 @@ int main(int argc, char** argv)
     }
     std::chrono::duration<double> elapsedTimer = std::chrono::high_resolution_clock::now() - startTimer;
 
-    for(int n = 0; n < numThreads; ++n)
-    {
-        for(int iw = 0; iw < 3; ++iw)
-            achtemp[iw] += achtempThread[n*3 + iw];
-    }
-
-
-    double end_time = omp_get_wtime(); //End timing here
 
     for(int iw=nstart; iw<nend; ++iw)
         cout << "achtemp[" << iw << "] = " << std::setprecision(15) << achtemp[iw] << endl;
@@ -384,9 +347,7 @@ int main(int argc, char** argv)
     free(aqsntemp);
     free(I_eps_array);
     free(inv_igp_index);
-    free(indinv);
     free(vcoul);
-    free(achtempThread);
 
     return 0;
 }
