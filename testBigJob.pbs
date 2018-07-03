@@ -33,7 +33,7 @@ if [ "${VER}" = "ComplexClass" ]; then
     num_threads=16
 fi
 
-cp /ccs/home/rgayatri/DOE-CSGF/${EXEC}.ex $MEMBERWORK/csc190
+cp /ccs/home/rgayatri/DOE-CSGF/${EXEC}.ex $MEMBERWORK/csc261
 cd $MEMBERWORK/csc190
 date
 
