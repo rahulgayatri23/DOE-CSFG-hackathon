@@ -143,23 +143,6 @@ void noflagOCC_solver(double wxt, std::complex<double> *wtilde_array, int my_igp
     }
 
     scht = scht_loc;
-    
-//    for(int ig = 0; ig<ncouls; ++ig)
-//    {
-//        std::complex<double> wdiff = wxt - wtilde_array[my_igp*ncouls+ig];
-//        double wdiffr = real(wdiff * conj(wdiff));
-//        double rden = 1/wdiffr;
-//
-//        std::complex<double> delw = wtilde_array[my_igp*ncouls+ig] * conj(wdiff) *rden; //*rden
-//        double delwr = real(delw * conj(delw));
-//
-//
-//        if((wdiffr > limittwo) && (delwr < limitone))
-//            scha[ig] = mygpvar1 * aqsntemp[n1*ncouls+ig] * delw * I_eps_array[my_igp*ncouls+ig] ;
-//
-//    }
-//    for(int ig = 0; ig<ncouls; ++ig)
-//        scht += scha[ig];
 }
 
 int main(int argc, char** argv)
@@ -196,8 +179,7 @@ int main(int argc, char** argv)
     double limitone = 1.0/(to1*4.0);
     double limittwo = pow(0.5,2);
 
-    double e_n1kq= 6.0; //This in the fortran code is derived through the double dimenrsion array ekq whose 2nd dimension is 1 and all the elements in the array have the same value
-//    MyAllocator<64> alloc;
+    double e_n1kq= 6.0; 
 
     //Printing out the params passed.
     if(mpiRank == 0)
@@ -215,21 +197,6 @@ int main(int argc, char** argv)
             << "\t limitone = " << limitone \
             << "\t limittwo = " << limittwo << endl;
     }
-
-
-
-    //Printing out the params passed.
-    std::cout << "number_bands = " << number_bands \
-        << "\t nvband = " << nvband \
-        << "\t ncouls = " << ncouls \
-        << "\t nodes_per_group  = " << nodes_per_group \
-        << "\t ngpown = " << ngpown \
-        << "\t nend = " << nend \
-        << "\t nstart = " << nstart \
-        << "\t gamma = " << gamma \
-        << "\t sexcut = " << sexcut \
-        << "\t limitone = " << limitone \
-        << "\t limittwo = " << limittwo << endl;
 
     std::complex<double> expr0( 0.0 , 0.0);
     std::complex<double> expr( 0.5 , 0.5);
@@ -260,9 +227,12 @@ int main(int argc, char** argv)
     double occ=1.0;
     bool flag_occ;
 
-    cout << "Size of wtilde_array = " << (ncouls*ngpown*2.0*8) / pow(1024,2) << " Mbytes" << endl;
-    cout << "Size of aqsntemp = " << (ncouls*number_bands*2.0*8) / pow(1024,2) << " Mbytes" << endl;
-    cout << "Size of I_eps_array array = " << (ncouls*ngpown*2.0*8) / pow(1024,2) << " Mbytes" << endl;
+    if(mpiRank == 0)
+    {
+        cout << "Size of wtilde_array = " << (ncouls*ngpown*2.0*8) / pow(1024,2) << " Mbytes" << endl;
+        cout << "Size of aqsntemp = " << (ncouls*number_bands*2.0*8) / pow(1024,2) << " Mbytes" << endl;
+        cout << "Size of I_eps_array array = " << (ncouls*ngpown*2.0*8) / pow(1024,2) << " Mbytes" << endl;
+    }
 
    for(int i=0; i<number_bands; i++)
        for(int j=0; j<ncouls; j++)

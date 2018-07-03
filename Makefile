@@ -1,18 +1,31 @@
+VER=SEQ
+#VER=OpenMP
+#VER=MPI
+#VER=ComplexClass
+
 #Sequential version
-#EXE = gppKerSeq.ex
-#SRC = gppKerSeq.cpp 
+ifeq ($(VER), SEQ)
+    EXE = gppKerSeq.ex
+    SRC = gppKerSeq.cpp 
+endif
 
 #OpenMP3.5 version
-EXE = gppOpenMP3.ex
-SRC = gppOpenMP3.cpp 
+ifeq ($(VER), OpenMP)
+    EXE = gppOpenMP3.ex
+    SRC = gppOpenMP3.cpp 
+endif
 
 #MPI version
-#EXE = gppMPIOpenMP3.ex
-#SRC = gppMPIOpenMP3.cpp 
+ifeq ($(VER), MPI)
+    EXE = gppMPI.ex
+    SRC = gppMPIOpenMP3.cpp 
+endif
 
 #Complex class + gpp version
-#EXE = gppComplex.ex
-#SRC = gppComplex.cpp 
+ifeq ($(VER), ComplexClass)
+    EXE = gppComplex.ex
+    SRC = gppComplex.cpp 
+endif
 
 CXX = CC
 
@@ -22,7 +35,7 @@ ifeq ($(CXX),CC)
 #cray flags
     CXXFLAGS=-O2 -hlist=a
 
-#intel 
+#intel flags
 #	CXXFLAGS=-O3 -qopenmp -std=c++11 -qopt-report=5
 #	CXXFLAGS+=-xCORE_AVX2
 ##	CXXFLAGS+=-xMIC_AVX512

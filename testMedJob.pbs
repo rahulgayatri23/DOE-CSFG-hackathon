@@ -6,7 +6,7 @@
 #PBS -l walltime=0:30:00,nodes=1
 
 #End PBS directives and begin shell commands
-smallInput="512 2 800 20"
+smallInput="512 2 1600 20"
 num_mpi_ranks=1
 num_threads=1
 
@@ -15,16 +15,16 @@ num_threads=1
 #EXEC=gppKerSeq
 
 #OpenMP3.5 version
-#EXEC=gppOpenMP3
-#num_threads=16
+EXEC=gppOpenMP3
+num_threads=16
 
-#MPI version
+##MPI version
 #EXEC=gppMPI
 #num_mpi_ranks=8
-
-#Complex class + gpp version
-EXEC=gppComplex
-num_threads=16
+#
+##Complex class + gpp version
+#EXEC=gppComplex
+#num_threads=16
 
 cp /ccs/home/rgayatri/DOE-CSGF/${EXEC}.ex $MEMBERWORK/csc190
 cd $MEMBERWORK/csc190
