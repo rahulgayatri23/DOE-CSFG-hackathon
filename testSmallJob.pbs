@@ -33,6 +33,6 @@ date
 export OMP_NUM_THREADS=${num_threads}
 aprun_command="aprun -n ${num_mpi_ranks} -d ${num_threads}"
 echo "The command we run is:"
-echo "${aprun_command} -n ${num_mpi_ranks} -d ${num_threads} ./${EXEC}.ex ${smallInput}"
+echo "${aprun_command} ./${EXEC}.ex ${smallInput}"
 
-${aprun_command} -n ${num_mpi_ranks} -d ${num_threads} ./${EXEC}.ex ${smallInput}
+${aprun_command} ./${EXEC}.ex ${smallInput}
