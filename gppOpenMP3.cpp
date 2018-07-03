@@ -133,18 +133,38 @@ void noflagOCC_solver(double wxt, std::complex<double> *wtilde_array, int my_igp
     std::complex<double> mygpvar1 = std::conj(aqsmtemp[n1*ncouls+igp]);
     std::complex<double> scht_loc(0.00, 0.00);
     
+//#pragma simd
+//#pragma ivdep
     for(int ig = 0; ig<ncouls; ++ig)
     {
         std::complex<double> wdiff = wxt - wtilde_array[my_igp*ncouls+ig];
         double wdiffr = real(wdiff * conj(wdiff));
         double rden = 1/wdiffr;
 
-        std::complex<double> delw = wtilde_array[my_igp*ncouls+ig] * conj(wdiff) *rden; 
+        std::complex<double> delw = wtilde_array[my_igp*ncouls+ig] * conj(wdiff) *rden; //*rden
         double delwr = real(delw * conj(delw));
 
         scht_loc += mygpvar1 * aqsntemp[n1*ncouls+ig] * delw * I_eps_array[my_igp*ncouls+ig] ;
     }
+
     scht = scht_loc;
+    
+//    for(int ig = 0; ig<ncouls; ++ig)
+//    {
+//        std::complex<double> wdiff = wxt - wtilde_array[my_igp*ncouls+ig];
+//        double wdiffr = real(wdiff * conj(wdiff));
+//        double rden = 1/wdiffr;
+//
+//        std::complex<double> delw = wtilde_array[my_igp*ncouls+ig] * conj(wdiff) *rden; //*rden
+//        double delwr = real(delw * conj(delw));
+//
+//
+//        if((wdiffr > limittwo) && (delwr < limitone))
+//            scha[ig] = mygpvar1 * aqsntemp[n1*ncouls+ig] * delw * I_eps_array[my_igp*ncouls+ig] ;
+//
+//    }
+//    for(int ig = 0; ig<ncouls; ++ig)
+//        scht += scha[ig];
 }
 
 int main(int argc, char** argv)
@@ -161,20 +181,31 @@ int main(int argc, char** argv)
     int ncouls = atoi(argv[3]);
     int nodes_per_group = atoi(argv[4]);
 
-    int npes = 1; 
-    int ngpown = ncouls / (nodes_per_group * npes); 
+    int npes = 1; //Represents the number of ranks per node
+    int ngpown = ncouls / (nodes_per_group * npes); //Number of gvectors per mpi task
+
     double e_lk = 10;
     double dw = 1;
     int nstart = 0, nend = 3;
 
-    double to1 = 1e-6;
+    int tid, numThreads;
+    #pragma omp parallel shared(numThreads) private(tid)
+    {
+            tid = omp_get_thread_num();
+            if(tid == 0)
+                numThreads = omp_get_num_threads();
+    }
+    std::cout << "Number of OpenMP Threads = " << numThreads << endl;
 
+    double to1 = 1e-6;
     double gamma = 0.5;
     double sexcut = 4.0;
     double limitone = 1.0/(to1*4.0);
     double limittwo = pow(0.5,2);
 
-    double e_n1kq= 6.0; 
+    double e_n1kq= 6.0; //This in the fortran code is derived through the double dimenrsion array ekq whose 2nd dimension is 1 and all the elements in the array have the same value
+//    MyAllocator<64> alloc;
+
 
     //Printing out the params passed.
     std::cout << "number_bands = " << number_bands \
@@ -204,6 +235,7 @@ int main(int argc, char** argv)
 
     int *inv_igp_index = new int[ngpown];
     double *vcoul = new double[ncouls];
+
 
     std::complex<double> achstemp = std::complex<double>(0.0, 0.0);
     std::complex<double> ssx_array[3], \
@@ -247,16 +279,6 @@ int main(int argc, char** argv)
        {
            achtemp[iw] = expr0;
        }
-
-      
-    int tid, numThreads;
-    #pragma omp parallel shared(numThreads) private(tid)
-    {
-            tid = omp_get_thread_num();
-            if(tid == 0)
-                numThreads = omp_get_num_threads();
-    }
-    std::cout << "Number of OpenMP Threads = " << numThreads << endl;
 
     auto startTimer = std::chrono::high_resolution_clock::now();
 
