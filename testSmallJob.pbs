@@ -8,14 +8,15 @@
 #End PBS directives and begin shell commands
 
 #What Version of the code are you running : 
-#VER=SEQ
-VER=OpenMP
+VER=SEQ
+#VER=OpenMP
 #VER=MPI
 #VER=ComplexClass
 
 smallInput="512 2 800 20"
 num_mpi_ranks=1
 num_threads=1
+num_nodes=1
 
 if [ "${VER}" = "SEQ" ]; then
     EXEC=gppKerSeq
@@ -25,8 +26,9 @@ if [ "${VER}" = "OpenMP" ]; then
     num_threads=16
 fi
 if [ "${VER}" = "MPI" ]; then
-    EXEC=gppMPI
+    EXEC=gppMPIOpenMP
     num_mpi_ranks=8
+    num_threads=$(((${num_nodes}*16)/${num_mpi_ranks}))
 fi
 if [ "${VER}" = "ComplexClass" ]; then
     EXEC=gppComplex
@@ -34,13 +36,14 @@ if [ "${VER}" = "ComplexClass" ]; then
 fi
 
 cp /ccs/home/rgayatri/DOE-CSGF/${EXEC}.ex $MEMBERWORK/csc261
-cd $MEMBERWORK/csc190
+cd $MEMBERWORK/csc261
 date
 
 export OMP_NUM_THREADS=${num_threads}
 aprun_command="aprun -n ${num_mpi_ranks} -d ${num_threads}"
-echo "The command we run is:"
+echo "The commands we run are:"
+echo "export OMP_NUM_THREADS=${num_threads}"
 echo "${aprun_command} ./${EXEC}.ex ${smallInput}"
-echo "********************************************"
+echo "*********************************************************************************"
 
 ${aprun_command} ./${EXEC}.ex ${smallInput}

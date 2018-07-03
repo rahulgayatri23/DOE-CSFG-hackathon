@@ -180,7 +180,7 @@ int main(int argc, char** argv)
     //Printing out the params passed.
     if(mpiRank == 0)
     {
-        std::cout << "******************Running pure MPI version of the code with : *************************" << std::endl;
+        std::cout << "******************Running MPI + OpenMP version of the code with : *************************" << std::endl;
         std::cout << "mpiSize = " << mpiSize << "\t number_bands = " << number_bands \
             << "\t nvband = " << nvband \
             << "\t ncouls = " << ncouls \
@@ -273,6 +273,7 @@ int main(int argc, char** argv)
             if(abs(wx_array[iw]) < to1) wx_array[iw] = to1;
         }
 
+#pragma omp parallel for default(shared) private(scht, sch_array, ssx_array, tid) firstprivate(ngpown, ncouls) schedule(dynamic) 
         for(int my_igp=0; my_igp<ngpown; ++my_igp)
         {
             //JRD changedthis

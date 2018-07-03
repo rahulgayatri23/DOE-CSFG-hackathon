@@ -1,5 +1,5 @@
-#VER=SEQ
-VER=OpenMP
+VER=SEQ
+#VER=OpenMP
 #VER=MPI
 #VER=ComplexClass
 
@@ -17,7 +17,7 @@ endif
 
 #MPI version
 ifeq ($(VER), MPI)
-    EXE = gppMPI.ex
+    EXE = gppMPIOpenMP.ex
     SRC = gppMPIOpenMP3.cpp 
 endif
 

@@ -244,6 +244,12 @@ int main(int argc, char** argv)
            achtemp[iw] = expr0;
        }
 
+    for(int iw=nstart; iw<nend; ++iw)
+    {
+        wx_array[iw] = e_lk - e_n1kq + dw*((iw+1)-2);
+        if(abs(wx_array[iw]) < to1) wx_array[iw] = to1;
+    }
+
     auto startTimer = std::chrono::high_resolution_clock::now();
 
     for(int n1 = 0; n1<number_bands; ++n1) // This for loop at the end cheddam
@@ -252,15 +258,8 @@ int main(int argc, char** argv)
 
         reduce_achstemp(n1, inv_igp_index, ncouls,aqsmtemp, aqsntemp, I_eps_array, achstemp, ngpown, vcoul);
 
-        for(int iw=nstart; iw<nend; ++iw)
-        {
-            wx_array[iw] = e_lk - e_n1kq + dw*((iw+1)-2);
-            if(abs(wx_array[iw]) < to1) wx_array[iw] = to1;
-        }
-
         for(int my_igp=0; my_igp<ngpown; ++my_igp)
         {
-            //JRD changedthis
             int igp = inv_igp_index[my_igp];
             if(igp == ncouls)
                 igp = ncouls-1;
