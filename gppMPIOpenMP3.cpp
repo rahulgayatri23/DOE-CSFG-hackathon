@@ -256,8 +256,13 @@ int main(int argc, char** argv)
         inv_igp_index[ig] = (global_ig+1) * ncouls / (ngpown*npes);
     }
 
-       for(int iw=0; iw<3; ++iw)
-           achtemp[iw] = expr0;
+    for(int iw=nstart; iw<nend; ++iw)
+    {
+       achtemp[iw] = expr0;
+        wx_array[iw] = e_lk - e_n1kq + dw*((iw+1)-2);
+        if(abs(wx_array[iw]) < to1) wx_array[iw] = to1;
+    }
+
 
     auto startTimer = std::chrono::high_resolution_clock::now();
 
@@ -266,12 +271,6 @@ int main(int argc, char** argv)
         flag_occ = n1 < nvband;
 
         reduce_achstemp(n1, inv_igp_index, ncouls,aqsmtemp, aqsntemp, I_eps_array, achstemp, ngpown, vcoul);
-
-        for(int iw=nstart; iw<nend; ++iw)
-        {
-            wx_array[iw] = e_lk - e_n1kq + dw*((iw+1)-2);
-            if(abs(wx_array[iw]) < to1) wx_array[iw] = to1;
-        }
 
 #pragma omp parallel for default(shared) private(scht, sch_array, ssx_array, tid) firstprivate(ngpown, ncouls) schedule(dynamic) 
         for(int my_igp=0; my_igp<ngpown; ++my_igp)

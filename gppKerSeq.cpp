@@ -239,13 +239,9 @@ int main(int argc, char** argv)
     for(int ig=0, tmp=1; ig < ngpown; ++ig,tmp++)
         inv_igp_index[ig] = (ig+1) * ncouls / ngpown;
 
-       for(int iw=0; iw<3; ++iw)
-       {
-           achtemp[iw] = expr0;
-       }
-
     for(int iw=nstart; iw<nend; ++iw)
     {
+       achtemp[iw] = expr0;
         wx_array[iw] = e_lk - e_n1kq + dw*((iw+1)-2);
         if(abs(wx_array[iw]) < to1) wx_array[iw] = to1;
     }
