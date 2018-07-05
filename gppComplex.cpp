@@ -166,7 +166,7 @@ int main(int argc, char** argv)
     double limitone = 1.0/(to1*4.0), \
     limittwo = pow(0.5,2);
 
-    double e_n1kq= 6.0; //This in the fortran code is derived through the double dimenrsion array ekq whose 2nd dimension is 1 and all the elements in the array have the same value
+    double e_n1kq= 6.0; 
 
     //Printing out the params passed.
     std::cout << "number_bands = " << number_bands \
@@ -215,15 +215,15 @@ int main(int argc, char** argv)
    for(int i=0; i<number_bands; i++)
        for(int j=0; j<ncouls; j++)
        {
-           aqsmtemp[i*ncouls+j] = expr;
-           aqsntemp[i*ncouls+j] = expr;
+           aqsmtemp[i*ncouls+j] = GPUComplex_mult(expr, (double)(i+j));
+           aqsntemp[i*ncouls+j] = GPUComplex_mult(expr, (double)(i+j));
        }
 
    for(int i=0; i<ngpown; i++)
        for(int j=0; j<ncouls; j++)
        {
-           I_eps_array[i*ncouls+j] = expr;
-           wtilde_array[i*ncouls+j] = expr;
+           I_eps_array[i*ncouls+j] = GPUComplex_mult(expr, (double)(i+j));
+           wtilde_array[i*ncouls+j] = GPUComplex_mult(expr, (double)(i+j));
        }
 
    for(int i=0; i<ncouls; i++)

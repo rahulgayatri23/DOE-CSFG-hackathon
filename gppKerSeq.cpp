@@ -69,7 +69,7 @@ void reduce_achstemp(int n1, int* inv_igp_index, int ncouls, std::complex<double
         std::complex<double> matngpmatmg(0.0, 0.0);
         std::complex<double> halfinvwtilde, delw, ssx, sch, wdiff, cden , eden, mygpvar1, mygpvar2;
         int igp = inv_igp_index[my_igp];
-        if(igp == ncouls)
+        if(igp >= ncouls)
             igp = ncouls-1;
 
         if(!(igp > ncouls || igp < 0)){
@@ -261,7 +261,7 @@ int main(int argc, char** argv)
         for(int my_igp=0; my_igp<ngpown; ++my_igp)
         {
             int igp = inv_igp_index[my_igp];
-            if(igp == ncouls)
+            if(igp >= ncouls)
                 igp = ncouls-1;
 
             for(int i=0; i<3; i++)
