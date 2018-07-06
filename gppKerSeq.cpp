@@ -236,7 +236,7 @@ int main(int argc, char** argv)
        vcoul[i] = 1.0*i;
 
 
-    for(int ig=0, tmp=1; ig < ngpown; ++ig,tmp++)
+    for(int ig=0; ig < ngpown; ++ig)
         inv_igp_index[ig] = (ig+1) * ncouls / ngpown;
 
     for(int iw=nstart; iw<nend; ++iw)
