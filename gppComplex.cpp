@@ -202,6 +202,7 @@ int main(int argc, char** argv)
     GPPComplex expr0( 0.0 , 0.0);
     GPPComplex expr( 0.5 , 0.5);
     GPPComplex achtemp[3];
+    GPPComplex *achtemp_threadArr = new GPPComplex [numThreads * 3];
     GPPComplex asxtemp[3];
     double wx_array[3];
 
@@ -261,21 +262,50 @@ int main(int argc, char** argv)
         if(abs(wx_array[iw]) < to1) wx_array[iw] = to1;
     }
 
+    for(int i = 0; i < numThreads*3; ++i)
+        achtemp_threadArr[i] = expr0;
+
     auto startTimer = std::chrono::high_resolution_clock::now();
 
-    for(int n1 = 0; n1<number_bands; ++n1) // This for loop at the end cheddam
-    {
-        flag_occ = n1 < nvband;
+#pragma omp parallel for collapse(3)
+       for(int n1 = 0; n1 < nvband; n1++)
+       {
+            for(int my_igp=0; my_igp<ngpown; ++my_igp)
+            {
+               for(int iw=nstart; iw<nend; iw++)
+               {
+                    ssx_array[iw] = expr0;
+                    int igp = inv_igp_index[my_igp];
+                    if(igp >= ncouls)
+                        igp = ncouls-1;
 
-//        reduce_achstemp(n1, inv_igp_index, ncouls,aqsmtemp, aqsntemp, I_eps_array, achstemp, ngpown, vcoul);
+                    scht = ssxt = expr0;
+                    wxt = wx_array[iw];
+                    flagOCC_solver(wxt, wtilde_array, my_igp, n1, aqsmtemp, aqsntemp, I_eps_array, ssxt, scht, ncouls, igp, ssxa, scha);
+
+                    ssx_array[iw] += ssxt;
+                    sch_array[iw] += GPPComplex_mult(scht, 0.5);
+                    asxtemp[iw] += GPPComplex_mult(GPPComplex_mult(ssx_array[iw] , occ) , vcoul[igp]);
+               }
+            }
+       }
+
+
+
+
+    for(int n1 = 0; n1<number_bands; ++n1)
+    {
+        reduce_achstemp(n1, inv_igp_index, ncouls,aqsmtemp, aqsntemp, I_eps_array, achstemp, ngpown, vcoul);
 
 #pragma omp parallel for default(shared) private(scht, sch_array, ssx_array, tid) firstprivate(ngpown, ncouls) schedule(dynamic) 
         for(int my_igp=0; my_igp<ngpown; ++my_igp)
         {
-            //JRD changedthis
             int igp = inv_igp_index[my_igp];
             if(igp >= ncouls)
                 igp = ncouls-1;
+
+
+            tid = omp_get_thread_num();
 
             for(int i=0; i<3; i++)
             {
@@ -283,44 +313,18 @@ int main(int argc, char** argv)
                 sch_array[i] = expr0;
             }
 
-            if(flag_occ)
+            for(int iw=nstart; iw<nend; ++iw)
             {
-                for(int iw=nstart; iw<nend; iw++)
-                {
                     scht = ssxt = expr0;
                     wxt = wx_array[iw];
-                    flagOCC_solver(wxt, wtilde_array, my_igp, n1, aqsmtemp, aqsntemp, I_eps_array, ssxt, scht, ncouls, igp, ssxa, scha);
 
-                    ssx_array[iw] += ssxt;
+                   noflagOCC_solver(wxt, wtilde_array, my_igp, n1, aqsmtemp, aqsntemp, I_eps_array, ssxt, scht, ncouls, igp, scha);
+
                     sch_array[iw] += GPPComplex_mult(scht, 0.5);
-                }
-            }
-            else
-            {
-                for(int iw=nstart; iw<nend; ++iw)
-                {
-                        scht = ssxt = expr0;
-                        wxt = wx_array[iw];
-
-                       noflagOCC_solver(wxt, wtilde_array, my_igp, n1, aqsmtemp, aqsntemp, I_eps_array, ssxt, scht, ncouls, igp, scha);
-
-                        sch_array[iw] += GPPComplex_mult(scht, 0.5);
-                }
             }
 
-            if(flag_occ)
-            {
-                for(int iw=nstart; iw<nend; ++iw)
-                {
-                    asxtemp[iw] += GPPComplex_mult(GPPComplex_mult(ssx_array[iw] , occ) , vcoul[igp]);
-                }
-            }
-
-#pragma omp critical
-{
             for(int iw=nstart; iw<nend; ++iw)
-                achtemp[iw] += GPPComplex_mult(sch_array[iw] , vcoul[igp]);
-}
+                achtemp_threadArr[tid*3 + iw] += GPPComplex_mult(sch_array[iw] , vcoul[igp]);
 
             acht_n1_loc[n1] += GPPComplex_mult(sch_array[2] , vcoul[igp]);
 
@@ -328,6 +332,11 @@ int main(int argc, char** argv)
     }
     std::chrono::duration<double> elapsedTimer = std::chrono::high_resolution_clock::now() - startTimer;
 
+    for(int i = 0; i < numThreads; ++i)
+    {
+        for(int iw = nstart; iw < nend; ++iw)
+            achtemp[iw] += achtemp_threadArr[i*3 + iw];
+    }
 
     for(int iw=nstart; iw<nend; ++iw)
         achtemp[iw].print();
@@ -341,6 +350,7 @@ int main(int argc, char** argv)
     free(I_eps_array);
     free(inv_igp_index);
     free(vcoul);
+    free(achtemp_threadArr);
 
     return 0;
 }
