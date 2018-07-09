@@ -9,3 +9,9 @@ What are the different versions of the files :
 Makefile - Modify based on version one is working with.
 testSmallJob.pbs - a small test job for titan.  
 testMedJob.pbs - a medium test job for titan.  
+testBigJob.pbs - a Big test job for titan.  
+
+Submit Job command - qsub job.pbs
+    Returns a JobId
+
+Check Job Status - showq | grep JobId
