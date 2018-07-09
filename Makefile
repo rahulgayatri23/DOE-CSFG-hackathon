@@ -1,6 +1,7 @@
-VER=SEQ
+#VER=SEQ
 #VER=OpenMP
-#VER=MPI
+#VER=MPIOpenMP
+VER=OpenACC
 #VER=ComplexClass
 
 #Sequential version
@@ -16,9 +17,15 @@ ifeq ($(VER), OpenMP)
 endif
 
 #MPI version
-ifeq ($(VER), MPI)
+ifeq ($(VER), MPIOpenMP)
     EXE = gppMPIOpenMP.ex
     SRC = gppMPIOpenMP3.cpp 
+endif
+
+#Complex class + gpp version
+ifeq ($(VER), OpenACC)
+    EXE = gppOpenACC.ex
+    SRC = gppOpenACC.cpp 
 endif
 
 #Complex class + gpp version
@@ -28,19 +35,12 @@ ifeq ($(VER), ComplexClass)
 endif
 
 CXX = CC
-
 LINK = ${CXX}
+CXXFLAGS=-O3 -hlist=a
 
-ifeq ($(CXX),CC)
-#cray flags
-    CXXFLAGS=-O2 -hlist=a
-
-#intel flags
-#	CXXFLAGS=-O3 -qopenmp -std=c++11 -qopt-report=5
-#	CXXFLAGS+=-xCORE_AVX2
-##	CXXFLAGS+=-xMIC_AVX512
-#	LINKFLAGS=-qopenmp -std=c++11
-endif 
+ifeq ($(VER), OpenACC)
+    CXXFLAGS+=-h pragma=acc
+endif
 
 OBJ = $(SRC:.cpp=.o)
 

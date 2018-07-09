@@ -1,16 +1,17 @@
 #!/bin/bash
 #Begin PBS directives for the job
 #PBS -A CSC190PORT
-#PBS -N gppJob
+#PBS -N GppSmallJob
 #PBS -j oe
 #PBS -l walltime=0:30:00,nodes=1
 
 #End PBS directives and begin shell commands
 
 #What Version of the code are you running : 
-VER=SEQ
+#VER=SEQ
 #VER=OpenMP
 #VER=MPI
+VER=OpenACC
 #VER=ComplexClass
 
 smallInput="512 2 800 20"
@@ -21,20 +22,28 @@ num_nodes=1
 if [ "${VER}" = "SEQ" ]; then
     EXEC=gppKerSeq
 fi
+
 if [ "${VER}" = "OpenMP" ]; then
     EXEC=gppOpenMP3
     num_threads=16
 fi
+
 if [ "${VER}" = "MPI" ]; then
     EXEC=gppMPIOpenMP
     num_mpi_ranks=8
     num_threads=$(((${num_nodes}*16)/${num_mpi_ranks}))
 fi
+
+if [ "${VER}" = "OpenACC" ]; then
+    EXEC=gppOpenACC
+fi
+
 if [ "${VER}" = "ComplexClass" ]; then
     EXEC=gppComplex
     num_threads=16
 fi
 
+rm $MEMBERWORK/csc261/${EXEC}.ex
 cp /ccs/home/rgayatri/DOE-CSGF/${EXEC}.ex $MEMBERWORK/csc261
 cd $MEMBERWORK/csc261
 date
