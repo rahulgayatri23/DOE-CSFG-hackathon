@@ -11,7 +11,7 @@ The achtemp array, which holds the final output is created for each thread and t
 #include <complex>
 #include <omp.h>
 #include <chrono>
-#include "Complex.h"
+#include "GPPComplex.h"
 
 using namespace std;
 
@@ -102,10 +102,12 @@ void reduce_achstemp(int n1, int* inv_igp_index, int ncouls, GPPComplex *aqsmtem
 
 
 
-void flagOCC_solver(double wxt, GPPComplex *wtilde_array, int my_igp, int n1, GPPComplex *aqsmtemp, GPPComplex *aqsntemp, GPPComplex *I_eps_array, GPPComplex &ssxt, GPPComplex &scht, int ncouls, int igp, GPPComplex *ssxa, GPPComplex* scha)
+void flagOCC_solver(double wxt, GPPComplex *wtilde_array, int my_igp, int n1, GPPComplex *aqsmtemp, GPPComplex *aqsntemp, GPPComplex *I_eps_array, GPPComplex &ssxt, GPPComplex &scht, int ncouls, int igp)
 {
     GPPComplex matngmatmgp = GPPComplex(0.0, 0.0);
     GPPComplex matngpmatmg = GPPComplex(0.0, 0.0);
+    GPPComplex ssxa(0.00, 0.00);
+    GPPComplex scha(0.00, 0.00);
     for(int ig=0; ig<ncouls; ++ig)
     {
         GPPComplex wtilde = wtilde_array[my_igp*ncouls+ig];
@@ -116,13 +118,13 @@ void flagOCC_solver(double wxt, GPPComplex *wtilde_array, int my_igp, int n1, GP
         GPPComplex matngmatmgp = GPPComplex_product(aqsntemp[n1*ncouls+ig] , mygpvar1);
         if(ig != igp) matngpmatmg = GPPComplex_product(GPPComplex_conj(aqsmtemp[n1*ncouls+ig]) , mygpvar2);
 
-        ssxt_scht_solver(wxt, igp, my_igp, ig, wtilde, wtilde2, Omega2, matngmatmgp, matngpmatmg, mygpvar1, mygpvar2, ssxa[ig], scha[ig], I_eps_array[my_igp*ncouls+ig]); 
-        ssxt += ssxa[ig];
-        scht += scha[ig];
+        ssxt_scht_solver(wxt, igp, my_igp, ig, wtilde, wtilde2, Omega2, matngmatmgp, matngpmatmg, mygpvar1, mygpvar2, ssxa, scha, I_eps_array[my_igp*ncouls+ig]); 
+        ssxt += ssxa;
+        scht += scha;
     }
 }
 
-void noflagOCC_solver(double wxt, GPPComplex *wtilde_array, int my_igp, int n1, GPPComplex *aqsmtemp, GPPComplex *aqsntemp, GPPComplex *I_eps_array, GPPComplex &ssxt, GPPComplex &scht, int ncouls, int igp, GPPComplex *scha)
+void noflagOCC_solver(double wxt, GPPComplex *wtilde_array, int my_igp, int n1, GPPComplex *aqsmtemp, GPPComplex *aqsntemp, GPPComplex *I_eps_array, GPPComplex &ssxt, GPPComplex &scht, int ncouls, int igp)
 {
     double to1 = 1e-6;
     double sexcut = 4.0;
@@ -168,15 +170,6 @@ int main(int argc, char** argv)
     double dw = 1;
     int nstart = 0, nend = 3;
 
-    int tid, numThreads;
-    #pragma omp parallel shared(numThreads) private(tid)
-    {
-            tid = omp_get_thread_num();
-            if(tid == 0)
-                numThreads = omp_get_num_threads();
-    }
-    std::cout << "Number of OpenMP Threads = " << numThreads << endl;
-
     double to1 = 1e-6;
     double gamma = 0.5;
     double sexcut = 4.0;
@@ -186,7 +179,7 @@ int main(int argc, char** argv)
     double e_n1kq= 6.0; 
 
     //Printing out the params passed.
-    std::cout << "******************Running pure OpenMP version of the code with : *************************" << std::endl;
+    std::cout << "******************Running pure Cuda version of the code with : *************************" << std::endl;
     std::cout << "number_bands = " << number_bands \
         << "\t nvband = " << nvband \
         << "\t ncouls = " << ncouls \
@@ -202,7 +195,7 @@ int main(int argc, char** argv)
     GPPComplex expr0( 0.0 , 0.0);
     GPPComplex expr( 0.5 , 0.5);
     GPPComplex achtemp[3];
-    GPPComplex *achtemp_threadArr = new GPPComplex [numThreads * 3];
+    double achtemp_re[3], achtemp_im[3];
     GPPComplex asxtemp[3];
     double wx_array[3];
 
@@ -216,14 +209,26 @@ int main(int argc, char** argv)
     int *inv_igp_index = new int[ngpown];
     double *vcoul = new double[ncouls];
 
+    //Data structures on Device
+    GPPComplex *d_acht_n1_loc, *d_aqsmtemp, *d_aqsntemp, *d_I_eps_array, *d_wtilde_array, *d_asxtemp;
+    double *d_achtemp_re, *d_achtemp_im, *d_vcoul, *d_wx_array, *d_achstemp_re, *d_achstemp_im, \
+        achstemp_re, achstemp_im;
+    int *d_inv_igp_index;
 
-    GPPComplex achstemp = GPPComplex(0.0, 0.0);
-    GPPComplex ssx_array[3], \
-        sch_array[3], \
-        scht, ssxt, wtilde;
+    CudaSafeCall(cudaMalloc((void**) &d_acht_n1_loc, number_bands*sizeof(GPPComplex)));
+    CudaSafeCall(cudaMalloc((void**) &d_aqsmtemp, number_bands*ncouls*sizeof(GPPComplex)));
+    CudaSafeCall(cudaMalloc((void**) &d_aqsntemp, number_bands*ncouls*sizeof(GPPComplex)));
+    CudaSafeCall(cudaMalloc((void**) &d_I_eps_array, ngpown*ncouls*sizeof(GPPComplex)));
+    CudaSafeCall(cudaMalloc((void**) &d_wtilde_array, ngpown*ncouls*sizeof(GPPComplex)));
+    CudaSafeCall(cudaMalloc((void**) &d_wx_array, 3*sizeof(double)));
+    CudaSafeCall(cudaMalloc((void**) &d_inv_igp_index, ngpown*sizeof(int)));
+    CudaSafeCall(cudaMalloc((void**) &d_vcoul, ncouls*sizeof(double)));
+    CudaSafeCall(cudaMalloc((void**) &d_achtemp_re, 3*sizeof(double)));
+    CudaSafeCall(cudaMalloc((void**) &d_achtemp_im, 3*sizeof(double)));
+    CudaSafeCall(cudaMalloc((void**) &d_asxtemp, 3*sizeof(GPPComplex)));
+    CudaSafeCall(cudaMalloc((void**) &d_achstemp_re, sizeof(double)));
+    CudaSafeCall(cudaMalloc((void**) &d_achstemp_im, sizeof(double)));
 
-    GPPComplex *ssxa = new GPPComplex [ncouls];
-    GPPComplex *scha = new GPPComplex [ncouls];
 
     double wxt;
     double occ=1.0;
@@ -258,88 +263,49 @@ int main(int argc, char** argv)
     for(int iw=nstart; iw<nend; ++iw)
     {
        achtemp[iw] = expr0;
+       achtemp_re[iw] = 0.00; achtemp_im[iw] = 0.00;
+
         wx_array[iw] = e_lk - e_n1kq + dw*((iw+1)-2);
         if(abs(wx_array[iw]) < to1) wx_array[iw] = to1;
     }
 
-    for(int i = 0; i < numThreads*3; ++i)
-        achtemp_threadArr[i] = expr0;
+    //Update data structures on device
+    CudaSafeCall(cudaMemcpy(d_acht_n1_loc, acht_n1_loc, number_bands*sizeof(GPPComplex), cudaMemcpyHostToDevice));
+    CudaSafeCall(cudaMemcpy(d_aqsmtemp, aqsmtemp, number_bands*ncouls*sizeof(GPPComplex), cudaMemcpyHostToDevice));
+    CudaSafeCall(cudaMemcpy(d_aqsntemp, aqsntemp, number_bands*ncouls*sizeof(GPPComplex), cudaMemcpyHostToDevice));
+    CudaSafeCall(cudaMemcpy(d_I_eps_array, I_eps_array, ngpown*ncouls*sizeof(GPPComplex), cudaMemcpyHostToDevice));
+    CudaSafeCall(cudaMemcpy(d_wtilde_array, wtilde_array, ngpown*ncouls*sizeof(GPPComplex), cudaMemcpyHostToDevice));
+    CudaSafeCall(cudaMemcpy(d_inv_igp_index, inv_igp_index, ngpown*sizeof(int), cudaMemcpyHostToDevice));
+    CudaSafeCall(cudaMemcpy(d_wx_array, wx_array, 3*sizeof(double), cudaMemcpyHostToDevice));
+    CudaSafeCall(cudaMemcpy(d_vcoul, vcoul, ncouls*sizeof(double), cudaMemcpyHostToDevice));
+    CudaSafeCall(cudaMemcpy(d_achtemp_re, achtemp_re, 3*sizeof(double), cudaMemcpyHostToDevice));
+    CudaSafeCall(cudaMemcpy(d_achtemp_im, achtemp_im, 3*sizeof(double), cudaMemcpyHostToDevice));
 
     auto startTimer = std::chrono::high_resolution_clock::now();
 
-#pragma omp parallel for collapse(3)
-       for(int n1 = 0; n1 < nvband; n1++)
-       {
-            for(int my_igp=0; my_igp<ngpown; ++my_igp)
-            {
-               for(int iw=nstart; iw<nend; iw++)
-               {
-                    ssx_array[iw] = expr0;
-                    int igp = inv_igp_index[my_igp];
-                    if(igp >= ncouls)
-                        igp = ncouls-1;
+//    till_nvbandKernel(d_asxtemp, d_inv_igp_index, d_vcoul, d_wtilde_array, d_aqsmtemp, d_aqsntemp, d_I_eps_array, d_wx_array, nvband, ncouls, ngpown);
+//
+    d_reduce_achstemp(number_bands, d_inv_igp_index, ncouls, d_aqsmtemp, d_aqsntemp, d_I_eps_array, d_achstemp_re, d_achstemp_im, ngpown, d_vcoul);
 
-                    scht = ssxt = expr0;
-                    wxt = wx_array[iw];
-                    flagOCC_solver(wxt, wtilde_array, my_igp, n1, aqsmtemp, aqsntemp, I_eps_array, ssxt, scht, ncouls, igp, ssxa, scha);
+    d_achtemp_kernel(number_bands, ngpown, ncouls, d_wtilde_array, d_inv_igp_index, d_aqsmtemp, d_aqsntemp, d_I_eps_array, d_acht_n1_loc, d_wx_array, d_vcoul, d_achtemp_re, d_achtemp_im);
 
-                    ssx_array[iw] += ssxt;
-                    sch_array[iw] += GPPComplex_mult(scht, 0.5);
-                    asxtemp[iw] += GPPComplex_mult(GPPComplex_mult(ssx_array[iw] , occ) , vcoul[igp]);
-               }
-            }
-       }
+    cudaDeviceSynchronize();
+    CudaSafeCall(cudaMemcpy(&achstemp_re, d_achstemp_re, sizeof(double), cudaMemcpyDeviceToHost));
+    CudaSafeCall(cudaMemcpy(&achstemp_im, d_achstemp_im, sizeof(double), cudaMemcpyDeviceToHost));
 
+    CudaSafeCall(cudaMemcpy(achtemp_im, d_achtemp_im, 3*sizeof(double), cudaMemcpyDeviceToHost));
+    CudaSafeCall(cudaMemcpy(achtemp_re, d_achtemp_re, 3*sizeof(double), cudaMemcpyDeviceToHost));
 
-
-
-    for(int n1 = 0; n1<number_bands; ++n1)
-    {
-        reduce_achstemp(n1, inv_igp_index, ncouls,aqsmtemp, aqsntemp, I_eps_array, achstemp, ngpown, vcoul);
-
-#pragma omp parallel for default(shared) private(scht, sch_array, ssx_array, tid) firstprivate(ngpown, ncouls) schedule(dynamic) 
-        for(int my_igp=0; my_igp<ngpown; ++my_igp)
-        {
-            int igp = inv_igp_index[my_igp];
-            if(igp >= ncouls)
-                igp = ncouls-1;
-
-
-            tid = omp_get_thread_num();
-
-            for(int i=0; i<3; i++)
-            {
-                ssx_array[i] = expr0;
-                sch_array[i] = expr0;
-            }
-
-            for(int iw=nstart; iw<nend; ++iw)
-            {
-                    scht = ssxt = expr0;
-                    wxt = wx_array[iw];
-
-                   noflagOCC_solver(wxt, wtilde_array, my_igp, n1, aqsmtemp, aqsntemp, I_eps_array, ssxt, scht, ncouls, igp, scha);
-
-                    sch_array[iw] += GPPComplex_mult(scht, 0.5);
-            }
-
-            for(int iw=nstart; iw<nend; ++iw)
-                achtemp_threadArr[tid*3 + iw] += GPPComplex_mult(sch_array[iw] , vcoul[igp]);
-
-            acht_n1_loc[n1] += GPPComplex_mult(sch_array[2] , vcoul[igp]);
-
-        }
-    }
     std::chrono::duration<double> elapsedTimer = std::chrono::high_resolution_clock::now() - startTimer;
 
-    for(int i = 0; i < numThreads; ++i)
-    {
-        for(int iw = nstart; iw < nend; ++iw)
-            achtemp[iw] += achtemp_threadArr[i*3 + iw];
-    }
+    GPPComplex achstemp(achstemp_re, achstemp_im);
 
     for(int iw=nstart; iw<nend; ++iw)
+    {
+        GPPComplex tmp(achtemp_re[iw], achtemp_im[iw]);
+        achtemp[iw] = tmp;
         achtemp[iw].print();
+    }
 
     cout << "********** Time Taken **********= " << elapsedTimer.count() << " secs" << endl;
 
@@ -350,7 +316,22 @@ int main(int argc, char** argv)
     free(I_eps_array);
     free(inv_igp_index);
     free(vcoul);
-    free(achtemp_threadArr);
+
+
+    //Free Cuda memory
+    cudaFree(d_acht_n1_loc);
+    cudaFree(d_wtilde_array);
+    cudaFree(d_aqsmtemp);
+    cudaFree(d_aqsntemp);
+    cudaFree(d_I_eps_array);
+    cudaFree(d_inv_igp_index);
+    cudaFree(d_vcoul);
+    cudaFree(d_asxtemp);
+    cudaFree(d_achstemp_re);
+    cudaFree(d_achstemp_im);
+    cudaFree(d_wx_array);
+    cudaFree(d_achtemp_re);
+    cudaFree(d_achtemp_im);
 
     return 0;
 }
