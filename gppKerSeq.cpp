@@ -248,7 +248,7 @@ int main(int argc, char** argv)
 
     auto startTimer = std::chrono::high_resolution_clock::now();
 
-    for(int n1 = 0; n1<number_bands; ++n1) // This for loop at the end cheddam
+    for(int n1 = 0; n1<number_bands; ++n1) 
     {
         flag_occ = n1 < nvband;
 

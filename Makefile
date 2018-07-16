@@ -1,7 +1,7 @@
-#VER=SEQ
+VER=SEQ
 #VER=OpenMP
 #VER=MPIOpenMP
-VER=OpenACC
+#VER=OpenACC
 #VER=ComplexClass
 
 #Sequential version

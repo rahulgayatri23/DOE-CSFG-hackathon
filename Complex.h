@@ -138,7 +138,6 @@ void set_imag(double val)
 /*
  * Return the square of a complex number 
  */
-#pragma acc routine
 GPPComplex GPPComplex_square(GPPComplex& src) {
     double re_this = src.re ;
     double im_this = src.im ;
@@ -151,7 +150,6 @@ GPPComplex GPPComplex_square(GPPComplex& src) {
 /*
  * Return the conjugate of a complex number 
  */
-#pragma acc routine
 GPPComplex GPPComplex_conj(const GPPComplex& src) {
 
 double re_this = src.re;
@@ -166,7 +164,6 @@ return result;
 /*
  * Return the product of 2 complex numbers 
  */
-#pragma acc routine
 inline GPPComplex GPPComplex_product(const GPPComplex& a, const GPPComplex& b) {
 
     double re_this = a.re * b.re - a.im*b.im ;
@@ -179,7 +176,6 @@ inline GPPComplex GPPComplex_product(const GPPComplex& a, const GPPComplex& b) {
 /*
  * Return the absolute of a complex number 
  */
-#pragma acc routine
 double GPPComplex_abs(const GPPComplex& src) {
     double re_this = src.re * src.re;
     double im_this = src.im * src.im;
@@ -191,7 +187,6 @@ double GPPComplex_abs(const GPPComplex& src) {
 /*
  *  result = a * b * c (a = complex ; b,c = double) 
  */
-#pragma acc routine
 GPPComplex GPPComplex_mult(GPPComplex& a, double b, double c) {
 
     GPPComplex result(a.re * b * c, a.im * b * c);
@@ -202,7 +197,6 @@ GPPComplex GPPComplex_mult(GPPComplex& a, double b, double c) {
 /*
  * Return the complex number c = a * b (a is complex, b is double) 
  */
-#pragma acc routine
 GPPComplex GPPComplex_mult(const GPPComplex& a, double b) {
 
    GPPComplex result(a.re*b, a.im*b);
@@ -213,7 +207,6 @@ GPPComplex GPPComplex_mult(const GPPComplex& a, double b) {
 /*
  * Return the complex number a += b * c  
  */
-#pragma acc routine
 void GPPComplex_fma(GPPComplex& a, const GPPComplex& b, const GPPComplex& c) {
     double re_this = b.re * c.re - b.im*c.im ;
     double im_this = b.re * c.im + b.im*c.re ;
@@ -227,7 +220,6 @@ void GPPComplex_fma(GPPComplex& a, const GPPComplex& b, const GPPComplex& c) {
 /*
  * Return the complex number a -= b * c  
  */
-#pragma acc routine
 void GPPComplex_fms(GPPComplex& a, const GPPComplex& b, const GPPComplex& c) {
     double re_this = b.re * c.re - b.im*c.im ;
     double im_this = b.re * c.im + b.im*c.re ;
@@ -239,24 +231,20 @@ void GPPComplex_fms(GPPComplex& a, const GPPComplex& b, const GPPComplex& c) {
 }
 
 
-#pragma acc routine
 GPPComplex doubleMinusGPPComplex(const double &a, GPPComplex& src) {
     GPPComplex result(a - src.re, 0 - src.im);
     return result;
 }
 
-#pragma acc routine
 GPPComplex doublePlusGPPComplex(double a, GPPComplex& src) {
     GPPComplex result(a + src.re, 0 + src.im);
     return result;
 }
 
-#pragma acc routine
 double GPPComplex_real( const GPPComplex& src) {
     return src.re;
 }
 
-#pragma acc routine
 double GPPComplex_imag( const GPPComplex& src) {
     return src.im;
 }

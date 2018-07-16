@@ -1,9 +1,6 @@
 EXE=gppCudaVer.ex
 SRC1=gppCudaVer.cpp 
 SRC2=GPPComplex.cu
-#EXE=testCudaVer.ex
-#SRC1=testCudaVer.cpp 
-#SRC2=testComplex.cu
 
 CXX = nvcc
 
