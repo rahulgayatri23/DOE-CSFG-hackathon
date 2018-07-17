@@ -11,8 +11,9 @@
 #VER=SEQ
 #VER=OpenMP
 #VER=MPIOpenMP
-VER=OpenACC
+#VER=OpenACC
 #VER=ComplexClass
+VER=Cuda
 
 smallInput="512 2 512 20"
 num_mpi_ranks=1
@@ -32,11 +33,14 @@ if [ "${VER}" = "MPIOpenMP" ]; then
     num_threads=$(((${num_nodes}*16)/${num_mpi_ranks}))
 fi
 if [ "${VER}" = "OpenACC" ]; then
-    EXEC=OpenACC
+    EXEC=gppOpenACC
 fi
 if [ "${VER}" = "ComplexClass" ]; then
     EXEC=gppComplex
     num_threads=16
+fi
+if [ "${VER}" = "Cuda" ]; then
+    EXEC=gppCudaVer
 fi
 
 cp /ccs/home/rgayatri/DOE-CSGF/${EXEC}.ex $MEMBERWORK/csc261

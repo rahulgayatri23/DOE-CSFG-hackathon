@@ -1,4 +1,6 @@
 #include "GPPComplex.h"
+#define nstart 0
+#define nend 3
 
 /*
  * Return the square of a complex number 
@@ -198,7 +200,7 @@ __global__ void d_flagOCC_solver(GPPComplex *asxtemp, int *inv_igp_index, double
     }
 }
 
-void till_nvbandKernel(GPPComplex *asxtemp, int *inv_igp_index, double *vcoul, GPPComplex *wtilde_array, GPPComplex *aqsmtemp, GPPComplex *aqsntemp, GPPComplex *I_eps_array, double *wx_array, int nvband, int ncouls, int ngpown)
+void d_till_nvbandKernel(GPPComplex *asxtemp, int *inv_igp_index, double *vcoul, GPPComplex *wtilde_array, GPPComplex *aqsmtemp, GPPComplex *aqsntemp, GPPComplex *I_eps_array, double *wx_array, int nvband, int ncouls, int ngpown)
 {
     dim3 numBlocks(nvband, ngpown);
     int numThreadsPerBlock = 32;
@@ -303,80 +305,77 @@ __global__ void d_reduce_achstempKernel(int number_bands, int *inv_igp_index, in
 
 __global__ void d_achtempSolver(int number_bands, int ngpown, int ncouls, GPPComplex *wtilde_array, int *inv_igp_index, GPPComplex *aqsmtemp, GPPComplex *aqsntemp, GPPComplex *I_eps_array, GPPComplex *acht_n1_loc, double *vcoul, double *wx_array, int numThreadsPerBlock, double *achtemp_re, double *achtemp_im)
 {
-    int n1 = blockIdx.x;
-    if(n1 < number_bands)
+    int block_id = blockIdx.x;
+    if(block_id == 0)
     {
-        int loopOverngpown = 1, leftOverngpown = 0;
-        GPPComplex sch_array[3];
-        GPPComplex expr0(0.00, 0.00);
-        double achtemp_re_loc[3], achtemp_im_loc[3];
-
-        if(ngpown > numThreadsPerBlock)
+        for(int n1 = 0; n1<number_bands; ++n1) 
         {
-            loopOverngpown = ngpown / numThreadsPerBlock;
-            leftOverngpown = ngpown % numThreadsPerBlock;
-        }
-
-        for( int x = 0; x < loopOverngpown && threadIdx.x < numThreadsPerBlock ; ++x) 
-        {
-            int my_igp = x*numThreadsPerBlock + threadIdx.x;
-
-            if(my_igp < ngpown)
+            for(int my_igp=0; my_igp<ngpown; ++my_igp)
             {
                 int igp = inv_igp_index[my_igp];
                 if(igp >= ncouls)
                     igp = ncouls-1;
-
-                for(int i=0; i<3; i++)
-                    sch_array[i] = expr0;
-
-                for(int iw=0; iw<3; ++iw)
+        
+                double achtemp_re_loc[nend-nstart], achtemp_im_loc[nend-nstart];
+                for(int iw = nstart; iw < nend; ++iw) {achtemp_re_loc[iw] = 0.00; achtemp_im_loc[iw] = 0.00;}
+        
+                for(int ig = 0; ig<ncouls; ++ig)
                 {
-                    GPPComplex scht(0.00, 0.00);
-                    GPPComplex ssxt(0.00, 0.00);
-
-                    d_noflagOCC_solver(wx_array[iw], wtilde_array, my_igp, n1, aqsmtemp, aqsntemp, I_eps_array, ssxt, scht, ncouls, igp);
-
-                    sch_array[iw] += d_GPPComplex_mult(scht, 0.5);
-                    achtemp_re_loc[iw] += d_GPPComplex_real(d_GPPComplex_mult(sch_array[iw] , vcoul[igp]));
-                    achtemp_im_loc[iw] += d_GPPComplex_imag(d_GPPComplex_mult(sch_array[iw] , vcoul[igp]));
+                    for(int iw = nstart; iw < nend; ++iw)
+                    {
+                        GPPComplex wdiff = d_doubleMinusGPPComplex(wx_array[iw], wtilde_array[my_igp*ncouls+ig]);
+                        GPPComplex delw = d_GPPComplex_mult(d_GPPComplex_product(wtilde_array[my_igp*ncouls+ig] , d_GPPComplex_conj(wdiff)), 1/d_GPPComplex_real(d_GPPComplex_product(wdiff, d_GPPComplex_conj(wdiff)))); 
+                        GPPComplex sch_array = d_GPPComplex_mult(d_GPPComplex_product(d_GPPComplex_product(d_GPPComplex_conj(aqsmtemp[n1*ncouls+igp]), aqsntemp[n1*ncouls+ig]), d_GPPComplex_product(delw , I_eps_array[my_igp*ncouls+ig])), 0.5*vcoul[igp]);
+                        achtemp_re_loc[iw] += d_GPPComplex_real(sch_array);
+                        achtemp_im_loc[iw] += d_GPPComplex_imag(sch_array);
+                    }
                 }
-                acht_n1_loc[n1] += d_GPPComplex_mult(sch_array[2] , vcoul[igp]);
-            }
-        }
-        if(leftOverngpown)
-        {
-            int my_igp = loopOverngpown*numThreadsPerBlock + threadIdx.x;
-            if(my_igp < ngpown)
-            {
-                int igp = inv_igp_index[my_igp];
-                if(igp >= ncouls)
-                    igp = ncouls-1;
-
-                for(int i=0; i<3; i++)
-                    sch_array[i] = expr0;
-
-                for(int iw=0; iw<3; ++iw)
+                for(int iw = nstart; iw < nend; ++iw)
                 {
-                    GPPComplex scht(0.00, 0.00);
-                    GPPComplex ssxt(0.00, 0.00);
-
-                    d_noflagOCC_solver(wx_array[iw], wtilde_array, my_igp, n1, aqsmtemp, aqsntemp, I_eps_array, ssxt, scht, ncouls, igp);
-
-                    sch_array[iw] += d_GPPComplex_mult(scht, 0.5);
-                    achtemp_re_loc[iw] += d_GPPComplex_real(d_GPPComplex_mult(sch_array[iw] , vcoul[igp]));
-                    achtemp_im_loc[iw] += d_GPPComplex_imag(d_GPPComplex_mult(sch_array[iw] , vcoul[igp]));
+                    achtemp_re[iw] += achtemp_re_loc[iw];
+                    achtemp_im[iw] += achtemp_im_loc[iw];
                 }
-                acht_n1_loc[n1] += d_GPPComplex_mult(sch_array[2] , vcoul[igp]);
-            }
-        }
-        for(int iw=0; iw<3; ++iw)
-        {
-            atomicAdd(&achtemp_re[iw] , achtemp_re_loc[iw]);
-            atomicAdd(&achtemp_im[iw] , achtemp_im_loc[iw]);
+    } //ngpown
         }
 
     }
+//    int n1 = blockIdx.x;
+//    if(n1 < number_bands)
+//    {
+//        double achtemp_re_loc[nend-nstart], achtemp_im_loc[nend-nstart];
+//        for(int iw = nstart; iw < nend; ++iw) {achtemp_re_loc[iw] = 0.00; achtemp_im_loc[iw] = 0.00;}
+//        GPPComplex sch_array[nend-nstart];
+//        if(threadIdx.x == 0)
+//        {
+//            for(int my_igp=0; my_igp<ngpown; ++my_igp)
+//            {
+//                int igp = inv_igp_index[my_igp];
+//                if(igp >= ncouls)
+//                    igp = ncouls-1;
+//        
+//        
+//                for(int ig = 0; ig<ncouls; ++ig)
+//                {
+//                    for(int iw = nstart; iw < nend; ++iw)
+//                    {
+//                        GPPComplex wdiff = d_doubleMinusGPPComplex(wx_array[iw], wtilde_array[my_igp*ncouls+ig]);
+//                        GPPComplex delw = d_GPPComplex_mult(d_GPPComplex_product(wtilde_array[my_igp*ncouls+ig] , d_GPPComplex_conj(wdiff)), 1/d_GPPComplex_real(d_GPPComplex_product(wdiff, d_GPPComplex_conj(wdiff)))); 
+//                        sch_array[iw] = d_GPPComplex_mult(d_GPPComplex_product(d_GPPComplex_product(d_GPPComplex_conj(aqsmtemp[n1*ncouls+igp]), aqsntemp[n1*ncouls+ig]), d_GPPComplex_product(delw , I_eps_array[my_igp*ncouls+ig])), 0.5*vcoul[igp]);
+//                        achtemp_re_loc[iw] += d_GPPComplex_real(sch_array[iw]);
+//                        achtemp_im_loc[iw] += d_GPPComplex_imag(sch_array[iw]);
+//                    }
+//                }
+//                acht_n1_loc[n1] += d_GPPComplex_mult(sch_array[2] , vcoul[igp]);
+//            }
+//        }
+//
+//        for(int iw=nstart; iw<nend; ++iw)
+//        {
+//            atomicAdd(&achtemp_re[iw] , achtemp_re_loc[iw]);
+//            atomicAdd(&achtemp_im[iw] , achtemp_im_loc[iw]);
+//        }
+//
+//    }
 }
 
 void d_reduce_achstemp(int number_bands, int *inv_igp_index, int ncouls, GPPComplex *aqsmtemp, GPPComplex *aqsntemp,  GPPComplex *I_eps_array, double *achstemp_re, double *achstemp_im, int ngpown, double *vcoul)
@@ -397,7 +396,40 @@ void d_achtemp_kernel(int number_bands, int ngpown, int ncouls, GPPComplex *wtil
     int numBlocks = number_bands;
     int numThreadsPerBlock = 32;
 
-    d_achtempSolver<<<numBlocks, numThreadsPerBlock>>>(number_bands, ngpown, ncouls, wtilde_array, inv_igp_index, aqsmtemp, aqsntemp, I_eps_array, acht_n1_loc, vcoul, wx_array, numThreadsPerBlock, achtemp_re, achtemp_im);
+//        double achtemp_re_loc[nend-nstart], achtemp_im_loc[nend-nstart];
+//        for(int iw = nstart; iw < nend; ++iw) {achtemp_re_loc[iw] = 0.00; achtemp_im_loc[iw] = 0.00;}
+//        GPPComplex sch_array[3];
+//    for(int n1 = 0; n1<number_bands; ++n1) 
+//    {
+//
+//            for(int my_igp=0; my_igp<ngpown; ++my_igp)
+//            {
+//                int igp = inv_igp_index[my_igp];
+//                if(igp >= ncouls)
+//                    igp = ncouls-1;
+//        
+//        
+//                for(int ig = 0; ig<ncouls; ++ig)
+//                {
+//                    for(int iw = nstart; iw < nend; ++iw)
+//                    {
+//                        GPPComplex wdiff = doubleMinusGPPComplex(wx_array[iw], wtilde_array[my_igp*ncouls+ig]);
+//                        GPPComplex delw = GPPComplex_mult(GPPComplex_product(wtilde_array[my_igp*ncouls+ig] , GPPComplex_conj(wdiff)), 1/GPPComplex_real(GPPComplex_product(wdiff, GPPComplex_conj(wdiff)))); 
+//                        sch_array[iw] = GPPComplex_mult(GPPComplex_product(GPPComplex_product(GPPComplex_conj(aqsmtemp[n1*ncouls+igp]), aqsntemp[n1*ncouls+ig]), GPPComplex_product(delw , I_eps_array[my_igp*ncouls+ig])), 0.5*vcoul[igp]);
+//                        achtemp_re_loc[iw] += GPPComplex_real(sch_array[iw]);
+//                        achtemp_im_loc[iw] += GPPComplex_imag(sch_array[iw]);
+//                    }
+//                }
+//                acht_n1_loc[n1] += GPPComplex_mult(sch_array[2] , vcoul[igp]);
+//            }
+//        }
+//        for(int iw=nstart; iw<nend; ++iw)
+//        {
+//            achtemp_re[iw] += achtemp_re_loc[iw];
+//            achtemp_im[iw] += achtemp_im_loc[iw];
+//        }
+
+    d_achtempSolver<<<1, numThreadsPerBlock>>>(number_bands, ngpown, ncouls, wtilde_array, inv_igp_index, aqsmtemp, aqsntemp, I_eps_array, acht_n1_loc, vcoul, wx_array, numThreadsPerBlock, achtemp_re, achtemp_im);
 
     cudaError_t err = cudaGetLastError();
     if (err != cudaSuccess) 

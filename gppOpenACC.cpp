@@ -169,7 +169,7 @@ int main(int argc, char** argv)
     double e_n1kq= 6.0; 
 
     //Printing out the params passed.
-        std::cout << "******************Running pure OpenMP version of the code with : *************************" << std::endl;
+    std::cout << "******************Running pure OpenMP version of the code with : *************************" << std::endl;
     std::cout << "number_bands = " << number_bands \
         << "\t nvband = " << nvband \
         << "\t ncouls = " << ncouls \

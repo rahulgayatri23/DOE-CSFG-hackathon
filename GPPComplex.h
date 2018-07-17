@@ -49,9 +49,7 @@ inline void __cudaCheckError( const char *file, const int line )
         exit( -1 );
     }
 
-    // More careful checking. However, this will affect performance.
-    // Comment away if needed. - Rahul - commented the below deviceSynchronize
-//    err = cudaDeviceSynchronize();
+    err = cudaDeviceSynchronize();
     if( cudaSuccess != err )
     {
         fprintf( stderr, "cudaCheckError() with sync failed at %s:%i : %s\n",file, line, cudaGetErrorString( err ) );
@@ -300,7 +298,7 @@ double GPPComplex_imag( const GPPComplex& src) {
 
 void gppKernelGPU( GPPComplex *wtilde_array, GPPComplex *aqsntemp, GPPComplex* aqsmtemp, GPPComplex *I_eps_array, int ncouls, int ngpown, int number_bands, double* wx_array, double *achtemp_re, double *achtemp_im, double *vcoul, int nstart, int nend, int* indinv, int* inv_igp_index);
 
-void till_nvbandKernel(GPPComplex *asxtemp, int *inv_igp_index, double *vcoul, GPPComplex *wtilde_array, GPPComplex *aqsmtemp, GPPComplex *aqsntemp, GPPComplex *I_eps_array, double* wx_array, int nvband, int ncouls, int ngpown);
+void d_till_nvbandKernel(GPPComplex *asxtemp, int *inv_igp_index, double *vcoul, GPPComplex *wtilde_array, GPPComplex *aqsmtemp, GPPComplex *aqsntemp, GPPComplex *I_eps_array, double* wx_array, int nvband, int ncouls, int ngpown);
 
 void d_reduce_achstemp(int number_bands, int *inv_igp_index, int ncouls, GPPComplex *aqsmtemp, GPPComplex *aqsntemp,  GPPComplex *I_eps_array, double *achstemp_re, double *achstemp_im, int ngpown, double *vcoul);
 
