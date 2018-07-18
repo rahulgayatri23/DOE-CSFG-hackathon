@@ -1,3 +1,4 @@
+/*MPI + OpenMP version */
 #include <iostream>
 #include <cstdlib>
 #include <memory>
