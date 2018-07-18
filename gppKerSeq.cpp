@@ -4,12 +4,14 @@
 #include <iomanip>
 #include <cmath>
 #include <complex>
-#include <omp.h>
 #include <chrono>
 
 using namespace std;
 
+#define nstart 0
+#define nend 3
 
+//Outputs are ssxa and scha, rest of the passed parameters are the inputs
 void ssxt_scht_solver(double wxt, int igp, int my_igp, int ig, std::complex<double> wtilde, std::complex<double> wtilde2, std::complex<double> Omega2, std::complex<double> matngmatmgp, std::complex<double> matngpmatmg, std::complex<double> mygpvar1, std::complex<double> mygpvar2, std::complex<double>& ssxa, std::complex<double>& scha, std::complex<double> I_eps_array_igp_myIgp)
 {
     std::complex<double> expr0( 0.0 , 0.0);
@@ -58,6 +60,7 @@ void ssxt_scht_solver(double wxt, int igp, int my_igp, int ig, std::complex<doub
     scha = matngmatmgp*sch;
 }
 
+//This function writes its results to achstemp, rest of the parameters are its inputs.
 void reduce_achstemp(int n1, int* inv_igp_index, int ncouls, std::complex<double> *aqsmtemp, std::complex<double> *aqsntemp, std::complex<double> *I_eps_array, std::complex<double>& achstemp, int ngpown, double* vcoul)
 {
     double to1 = 1e-6;
@@ -94,6 +97,8 @@ void reduce_achstemp(int n1, int* inv_igp_index, int ncouls, std::complex<double
 
 
 
+//Performs the calculation for the first nvband iterations.
+//Outputs are ssxt and scht, rest of the passed parameters are the inputs
 void flagOCC_solver(double wxt, std::complex<double> *wtilde_array, int my_igp, int n1, std::complex<double> *aqsmtemp, std::complex<double> *aqsntemp, std::complex<double> *I_eps_array, std::complex<double> &ssxt, std::complex<double> &scht, int ncouls, int igp, std::complex<double> *ssxa, std::complex<double>* scha)
 {
     std::complex<double> matngmatmgp = std::complex<double>(0.0, 0.0);
@@ -114,6 +119,7 @@ void flagOCC_solver(double wxt, std::complex<double> *wtilde_array, int my_igp, 
     }
 }
 
+//Outputs is scht, rest of the passed parameters are the inputs
 void noflagOCC_solver(double wxt, std::complex<double> *wtilde_array, int my_igp, int n1, std::complex<double> *aqsmtemp, std::complex<double> *aqsntemp, std::complex<double> *I_eps_array, std::complex<double> &ssxt, std::complex<double> &scht, int ncouls, int igp, std::complex<double> *scha)
 {
     double to1 = 1e-6;
@@ -142,34 +148,32 @@ void noflagOCC_solver(double wxt, std::complex<double> *wtilde_array, int my_igp
 int main(int argc, char** argv)
 {
 
+//The input to the executable needs 4 arguments.
     if (argc != 5)
     {
         std::cout << "The correct form of input is : " << endl;
         std::cout << " ./a.out <number_bands> <number_valence_bands> <number_plane_waves> <matrix_divider> " << endl;
         exit (0);
     }
-    int number_bands = atoi(argv[1]);
-    int nvband = atoi(argv[2]);
-    int ncouls = atoi(argv[3]);
-    int nodes_per_group = atoi(argv[4]);
 
-    int npes = 1; //Represents the number of ranks per node
-    int ngpown = ncouls / (nodes_per_group * npes); //Number of gvectors per mpi task
+//Input parameters stored in these variables.
+    const int number_bands = atoi(argv[1]);
+    const int nvband = atoi(argv[2]);
+    const int ncouls = atoi(argv[3]);
+    const int nodes_per_group = atoi(argv[4]);
 
-    double e_lk = 10;
-    double dw = 1;
-    int nstart = 0, nend = 3;
-
-    int tid, numThreads;
-    double to1 = 1e-6;
-
-    double gamma = 0.5;
-    double sexcut = 4.0;
-    double limitone = 1.0/(to1*4.0);
-    double limittwo = pow(0.5,2);
-
-    double e_n1kq= 6.0; 
-
+//Constants that will be used later
+    const int npes = 1; 
+    const int ngpown = ncouls / (nodes_per_group * npes); 
+    const double e_lk = 10;
+    const double dw = 1;
+    const double to1 = 1e-6;
+    const double gamma = 0.5;
+    const double sexcut = 4.0;
+    const double limitone = 1.0/(to1*4.0);
+    const double limittwo = pow(0.5,2);
+    const double e_n1kq= 6.0; 
+    const double occ=1.0;
 
     //Printing out the params passed.
     std::cout << "number_bands = " << number_bands \
@@ -184,39 +188,42 @@ int main(int argc, char** argv)
         << "\t limitone = " << limitone \
         << "\t limittwo = " << limittwo << endl;
 
+    //Some expressions declared to be used later in the initialization.
     std::complex<double> expr0( 0.0 , 0.0);
     std::complex<double> expr( 0.5 , 0.5);
-    std::complex<double> achtemp[3];
-    std::complex<double> asxtemp[3];
-    double wx_array[3];
 
-    // Memory allocation
+    // Memory allocation of input data structures.
+    // Two dimensional arrays from theory have been initialized as a single dimension in m*n format for performance.
     std::complex<double> *acht_n1_loc = new std::complex<double> [number_bands];
     std::complex<double> *aqsmtemp = new std::complex<double> [number_bands*ncouls];
     std::complex<double> *aqsntemp = new std::complex<double> [number_bands*ncouls];
     std::complex<double> *I_eps_array = new std::complex<double> [ngpown*ncouls];
     std::complex<double> *wtilde_array = new std::complex<double> [ngpown*ncouls];
-
     int *inv_igp_index = new int[ngpown];
     double *vcoul = new double[ncouls];
+    double wx_array[nend-nstart];
 
+    //arrays that will be later used to store the output results
+    std::complex<double> achtemp[nend-nstart]; 
+    std::complex<double> asxtemp[nend-nstart];
 
     std::complex<double> achstemp = std::complex<double>(0.0, 0.0);
-    std::complex<double> ssx_array[3], \
-        sch_array[3], \
-        scht, ssxt, wtilde;
+
+    //Data structures that store intermediete results
+    std::complex<double> ssx_array[nend-nstart], \
+        sch_array[nend-nstart], \
+        scht, ssxt;
 
     std::complex<double> *ssxa = new std::complex<double> [ncouls];
     std::complex<double> *scha = new std::complex<double> [ncouls];
 
-    double wxt;
-    double occ=1.0;
-    bool flag_occ;
 
+    //Printing the size of each of the input data structures.
     cout << "Size of wtilde_array = " << (ncouls*ngpown*2.0*8) / pow(1024,2) << " Mbytes" << endl;
     cout << "Size of aqsntemp = " << (ncouls*number_bands*2.0*8) / pow(1024,2) << " Mbytes" << endl;
     cout << "Size of I_eps_array array = " << (ncouls*ngpown*2.0*8) / pow(1024,2) << " Mbytes" << endl;
 
+//Initializing the data structures
    for(int i=0; i<number_bands; i++)
        for(int j=0; j<ncouls; j++)
        {
@@ -226,32 +233,39 @@ int main(int argc, char** argv)
 
 
    for(int i=0; i<ngpown; i++)
+   {
        for(int j=0; j<ncouls; j++)
        {
            I_eps_array[i*ncouls+j] = ((double)(i+j))*expr;
            wtilde_array[i*ncouls+j] = ((double)(i+j))*expr;
        }
 
+        inv_igp_index[i] = (i+1) * ncouls / ngpown;
+   }
+
    for(int i=0; i<ncouls; i++)
+   {
+       ssxa[i] = expr0;
+       scha[i] = expr0;
        vcoul[i] = 1.0*i;
+   }
 
-
-    for(int ig=0; ig < ngpown; ++ig)
-        inv_igp_index[ig] = (ig+1) * ncouls / ngpown;
 
     for(int iw=nstart; iw<nend; ++iw)
     {
-       achtemp[iw] = expr0;
+        achtemp[iw] = expr0;
+        asxtemp[iw] = expr0;
         wx_array[iw] = e_lk - e_n1kq + dw*((iw+1)-2);
         if(abs(wx_array[iw]) < to1) wx_array[iw] = to1;
     }
 
+    //Start the timer before the work begins.
     auto startTimer = std::chrono::high_resolution_clock::now();
 
+//The main work starts here
     for(int n1 = 0; n1<number_bands; ++n1) 
     {
-        flag_occ = n1 < nvband;
-
+        bool flag_occ = n1 < nvband;
         reduce_achstemp(n1, inv_igp_index, ncouls,aqsmtemp, aqsntemp, I_eps_array, achstemp, ngpown, vcoul);
 
         for(int my_igp=0; my_igp<ngpown; ++my_igp)
@@ -260,52 +274,45 @@ int main(int argc, char** argv)
             if(igp >= ncouls)
                 igp = ncouls-1;
 
-            for(int i=0; i<3; i++)
+            //Reinitialize the intermediete variables to initial values.
+            for(int i=nstart; i<nend; i++)
             {
                 ssx_array[i] = expr0;
                 sch_array[i] = expr0;
             }
 
-            if(flag_occ)
+            if(flag_occ) //iterations from 0-nvband from the outer loop enter this conditional
             {
                 for(int iw=nstart; iw<nend; iw++)
                 {
                     scht = ssxt = expr0;
-                    wxt = wx_array[iw];
+                    double wxt = wx_array[iw];
                     flagOCC_solver(wxt, wtilde_array, my_igp, n1, aqsmtemp, aqsntemp, I_eps_array, ssxt, scht, ncouls, igp, ssxa, scha);
-
                     ssx_array[iw] += ssxt;
                     sch_array[iw] +=(double) 0.5*scht;
+                    
+                    asxtemp[iw] += ssx_array[iw] * occ * vcoul[igp];//Store output of the first nvband iterations.
                 }
             }
-            else
+            else //rest of the iterations i.e., nvband-number_bands enter this else-loop
             {
                 for(int iw=nstart; iw<nend; ++iw)
                 {
                         scht = ssxt = expr0;
-                        wxt = wx_array[iw];
-
+                        double wxt = wx_array[iw];
                         noflagOCC_solver(wxt, wtilde_array, my_igp, n1, aqsmtemp, aqsntemp, I_eps_array, ssxt, scht, ncouls, igp, scha);
 
                         sch_array[iw] +=(double) 0.5*scht;
                 }
             }
 
-            if(flag_occ)
-            {
-                for(int iw=nstart; iw<nend; ++iw)
-                {
-                    asxtemp[iw] += ssx_array[iw] * occ * vcoul[igp];
-                }
-            }
-
             for(int iw=nstart; iw<nend; ++iw)
-                achtemp[iw] += sch_array[iw] * vcoul[igp];
+                achtemp[iw] += sch_array[iw] * vcoul[igp];//Store final output here
 
             acht_n1_loc[n1] += sch_array[2] * vcoul[igp];
-
         }
     }
+    //Time Taken
     std::chrono::duration<double> elapsedTimer = std::chrono::high_resolution_clock::now() - startTimer;
 
 
@@ -314,6 +321,7 @@ int main(int argc, char** argv)
 
     cout << "********** Time Taken **********= " << elapsedTimer.count() << " secs" << endl;
 
+    //Free the allocated memory
     free(acht_n1_loc);
     free(wtilde_array);
     free(aqsmtemp);
