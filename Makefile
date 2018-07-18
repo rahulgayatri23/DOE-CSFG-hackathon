@@ -7,31 +7,31 @@ VER=SEQ
 #Sequential version
 ifeq ($(VER), SEQ)
     EXE = gppKerSeq.ex
-    SRC = gppKerSeq.cpp 
+    SRC = gppKerSeq.cpp
 endif
 
 #OpenMP3.5 version
 ifeq ($(VER), OpenMP)
     EXE = gppOpenMP3.ex
-    SRC = gppOpenMP3.cpp 
+    SRC = gppOpenMP3.cpp
 endif
 
 #MPI version
 ifeq ($(VER), MPIOpenMP)
     EXE = gppMPIOpenMP.ex
-    SRC = gppMPIOpenMP3.cpp 
+    SRC = gppMPIOpenMP3.cpp
 endif
 
 #Complex class + gpp version
 ifeq ($(VER), OpenACC)
     EXE = gppOpenACC.ex
-    SRC = gppOpenACC.cpp 
+    SRC = gppOpenACC.cpp
 endif
 
 #Complex class + gpp version
 ifeq ($(VER), ComplexClass)
     EXE = gppComplex.ex
-    SRC = gppComplex.cpp 
+    SRC = gppComplex.cpp
 endif
 
 CXX = CC
@@ -44,12 +44,12 @@ endif
 
 OBJ = $(SRC:.cpp=.o)
 
-$(EXE): $(OBJ)  
+$(EXE): $(OBJ)
 	$(CXX) $(OBJ) -o $(EXE) $(LINKFLAGS)
 
-$(OBJ1): $(SRC) 
+$(OBJ1): $(SRC)
 	$(CXX) -c $(SRC) $(CXXFLAGS)
 
-clean: 
+clean:
 	rm -f $(OBJ) $(EXE)
 
