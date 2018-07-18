@@ -18,10 +18,9 @@ using namespace std;
 void ssxt_scht_solver(double wxt, int igp, int my_igp, int ig, std::complex<double> wtilde, std::complex<double> wtilde2, std::complex<double> Omega2, std::complex<double> matngmatmgp, std::complex<double> matngpmatmg, std::complex<double> mygpvar1, std::complex<double> mygpvar2, std::complex<double>& ssxa, std::complex<double>& scha, std::complex<double> I_eps_array_igp_myIgp)
 {
     std::complex<double> expr0( 0.0 , 0.0);
-    double delw2, scha_mult, ssxcutoff;
+    double ssxcutoff;
     double to1 = 1e-6;
     double sexcut = 4.0;
-    double gamma = 0.5;
     double limitone = 1.0/(to1*4.0);
     double limittwo = pow(0.5,2);
     std::complex<double> sch(0.00, 0.00);
@@ -127,11 +126,6 @@ void flagOCC_solver(double wxt, std::complex<double> *wtilde_array, int my_igp, 
 //Outputs is scht, rest of the passed parameters are the inputs
 void noflagOCC_solver(double wxt, std::complex<double> *wtilde_array, int my_igp, int n1, std::complex<double> *aqsmtemp, std::complex<double> *aqsntemp, std::complex<double> *I_eps_array, std::complex<double> &ssxt, std::complex<double> &scht, int ncouls, int igp, std::complex<double> *scha)
 {
-    double to1 = 1e-6;
-    double sexcut = 4.0;
-    double gamma = 0.5;
-    double limitone = 1.0/(to1*4.0);
-    double limittwo = pow(0.5,2);
     std::complex<double> mygpvar1 = std::conj(aqsmtemp[n1*ncouls+igp]);
     std::complex<double> scht_loc(0.00, 0.00);
     
