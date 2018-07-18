@@ -1,3 +1,8 @@
+/*
+Sequential GPP code that uses std:complex<double> data type. 
+*/
+
+
 #include <iostream>
 #include <cstdlib>
 #include <memory>
@@ -21,7 +26,8 @@ void ssxt_scht_solver(double wxt, int igp, int my_igp, int ig, std::complex<doub
     double gamma = 0.5;
     double limitone = 1.0/(to1*4.0);
     double limittwo = pow(0.5,2);
-    std::complex<double> sch, ssx;
+    std::complex<double> sch(0.00, 0.00);
+    std::complex<double> ssx(0.00, 0.00);
 
     std::complex<double> wdiff = wxt - wtilde;
 
@@ -64,22 +70,23 @@ void ssxt_scht_solver(double wxt, int igp, int my_igp, int ig, std::complex<doub
 void reduce_achstemp(int n1, int* inv_igp_index, int ncouls, std::complex<double> *aqsmtemp, std::complex<double> *aqsntemp, std::complex<double> *I_eps_array, std::complex<double>& achstemp, int ngpown, double* vcoul)
 {
     double to1 = 1e-6;
-    std::complex<double> schstemp(0.0, 0.0);;
     for(int my_igp = 0; my_igp< ngpown; my_igp++)
     {
+        std::complex<double> schstemp(0.0, 0.0);
         std::complex<double> schs(0.0, 0.0);
         std::complex<double> matngmatmgp(0.0, 0.0);
         std::complex<double> matngpmatmg(0.0, 0.0);
-        std::complex<double> halfinvwtilde, delw, ssx, sch, wdiff, cden , eden, mygpvar1, mygpvar2;
+        std::complex<double> mygpvar1(0.00, 0.00);
+        std::complex<double> mygpvar2(0.00, 0.00);
         int igp = inv_igp_index[my_igp];
         if(igp >= ncouls)
             igp = ncouls-1;
 
-        if(!(igp > ncouls || igp < 0)){
+        if(!(igp > ncouls || igp < 0))
+        {
 
-        std::complex<double> mygpvar1 = std::conj(aqsmtemp[n1*ncouls+igp]);
-        std::complex<double> mygpvar2 = aqsntemp[n1*ncouls+igp];
-
+            mygpvar1 = std::conj(aqsmtemp[n1*ncouls+igp]);
+            mygpvar2 = aqsntemp[n1*ncouls+igp];
             schs = -I_eps_array[my_igp*ncouls+igp];
             matngmatmgp = aqsntemp[n1*ncouls+igp] * mygpvar1;
 
@@ -188,10 +195,6 @@ int main(int argc, char** argv)
         << "\t limitone = " << limitone \
         << "\t limittwo = " << limittwo << endl;
 
-    //Some expressions declared to be used later in the initialization.
-    std::complex<double> expr0( 0.0 , 0.0);
-    std::complex<double> expr( 0.5 , 0.5);
-
     // Memory allocation of input data structures.
     // Two dimensional arrays from theory have been initialized as a single dimension in m*n format for performance.
     std::complex<double> *acht_n1_loc = new std::complex<double> [number_bands];
@@ -213,15 +216,17 @@ int main(int argc, char** argv)
     std::complex<double> ssx_array[nend-nstart], \
         sch_array[nend-nstart], \
         scht, ssxt;
-
     std::complex<double> *ssxa = new std::complex<double> [ncouls];
     std::complex<double> *scha = new std::complex<double> [ncouls];
-
 
     //Printing the size of each of the input data structures.
     cout << "Size of wtilde_array = " << (ncouls*ngpown*2.0*8) / pow(1024,2) << " Mbytes" << endl;
     cout << "Size of aqsntemp = " << (ncouls*number_bands*2.0*8) / pow(1024,2) << " Mbytes" << endl;
     cout << "Size of I_eps_array array = " << (ncouls*ngpown*2.0*8) / pow(1024,2) << " Mbytes" << endl;
+
+    //Some expressions declared to be used later in the initialization.
+    std::complex<double> expr0( 0.0 , 0.0);
+    std::complex<double> expr( 0.5 , 0.5);
 
 //Initializing the data structures
    for(int i=0; i<number_bands; i++)
@@ -266,7 +271,7 @@ int main(int argc, char** argv)
     for(int n1 = 0; n1<number_bands; ++n1) 
     {
         bool flag_occ = n1 < nvband;
-        reduce_achstemp(n1, inv_igp_index, ncouls,aqsmtemp, aqsntemp, I_eps_array, achstemp, ngpown, vcoul);
+        reduce_achstemp(n1, inv_igp_index, ncouls, aqsmtemp, aqsntemp, I_eps_array, achstemp, ngpown, vcoul);
 
         for(int my_igp=0; my_igp<ngpown; ++my_igp)
         {
@@ -333,4 +338,3 @@ int main(int argc, char** argv)
     return 0;
 }
 
-//Almost done code
