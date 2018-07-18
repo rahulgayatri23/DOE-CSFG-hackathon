@@ -7,11 +7,11 @@
 
 #End PBS directives and begin shell commands
 
-#What Version of the code are you running : 
-#VER=SEQ
+#What Version of the code are you running :
+VER=SEQ
 #VER=OpenMP
 #VER=MPI
-VER=OpenACC
+#VER=OpenACC
 #VER=ComplexClass
 
 smallInput="512 2 800 20"
