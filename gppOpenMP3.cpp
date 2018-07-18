@@ -8,6 +8,7 @@ Sequential GPP code that uses std:complex<double> data type.
 #include <cmath>
 #include <complex>
 #include <sys/time.h>
+#include <omp.h>
 
 using namespace std;
 
@@ -181,7 +182,7 @@ int main(int argc, char** argv)
     const double occ=1.0;
 
     //Printing out the params passed.
-    std::cout << "**************************** Sequential GPP code ************************* " << std::endl;
+    std::cout << "**************************** Pure OMP3 GPP code ************************* " << std::endl;
     std::cout << "number_bands = " << number_bands \
         << "\t nvband = " << nvband \
         << "\t ncouls = " << ncouls \
@@ -193,6 +194,16 @@ int main(int argc, char** argv)
         << "\t sexcut = " << sexcut \
         << "\t limitone = " << limitone \
         << "\t limittwo = " << limittwo << endl;
+
+//OpenMP configuration printing
+    int tid, numThreads;
+    #pragma omp parallel shared(numThreads) private(tid)
+    {
+            tid = omp_get_thread_num();
+            if(tid == 0)
+                numThreads = omp_get_num_threads();
+    }
+    std::cout << "Number of OpenMP Threads = " << numThreads << endl;
 
     // Memory allocation of input data structures.
     // Two dimensional arrays from theory have been initialized as a single dimension in m*n format for performance.
@@ -211,10 +222,6 @@ int main(int argc, char** argv)
 
     std::complex<double> achstemp = std::complex<double>(0.0, 0.0);
 
-    //Data structures that store intermediete results
-    std::complex<double> ssx_array[nend-nstart], \
-        sch_array[nend-nstart], \
-        scht, ssxt;
     std::complex<double> *ssxa = new std::complex<double> [ncouls];
     std::complex<double> *scha = new std::complex<double> [ncouls];
 
@@ -264,7 +271,6 @@ int main(int argc, char** argv)
     }
 
     //Start the timer before the work begins.
-    //Start the timer before the work begins.
     timeval startTimer, endTimer;
     gettimeofday(&startTimer, NULL);
 
@@ -274,8 +280,12 @@ int main(int argc, char** argv)
         bool flag_occ = n1 < nvband;
         reduce_achstemp(n1, inv_igp_index, ncouls, aqsmtemp, aqsntemp, I_eps_array, achstemp, ngpown, vcoul);
 
+#pragma omp parallel for default(shared) firstprivate(ngpown, ncouls) schedule(dynamic) 
         for(int my_igp=0; my_igp<ngpown; ++my_igp)
         {
+            std::complex<double> ssx_array[nend-nstart], \
+                sch_array[nend-nstart], \
+                scht, ssxt;
             int igp = inv_igp_index[my_igp];
             if(igp >= ncouls)
                 igp = ncouls-1;
@@ -312,16 +322,18 @@ int main(int argc, char** argv)
                 }
             }
 
+#pragma omp critical
+{
             for(int iw=nstart; iw<nend; ++iw)
                 achtemp[iw] += sch_array[iw] * vcoul[igp];//Store final output here
 
             acht_n1_loc[n1] += sch_array[2] * vcoul[igp];
+}
         }
     }
     //Time Taken
     gettimeofday(&endTimer, NULL);
     double elapsedTimer = (endTimer.tv_sec - startTimer.tv_sec) +1e-6*(endTimer.tv_usec - startTimer.tv_usec);
-
 
 
     for(int iw=nstart; iw<nend; ++iw)
