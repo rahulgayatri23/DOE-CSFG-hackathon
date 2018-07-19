@@ -1,0 +1,29 @@
+EXE=gppCudaVer.ex
+SRC1=gppCudaVer.cpp 
+SRC2=GPPComplex.cu
+
+CXX = nvcc
+
+LINK = ${CXX}
+
+ifeq ($(CXX),nvcc)
+	CXXFLAGS= -g -O3 -Wno-deprecated-gpu-targets -Xptxas -v --maxrregcount=150
+	CXXFLAGS+=-arch=sm_30
+	LINKFLAGS=-Wno-deprecated-gpu-targets
+endif 
+
+OBJ1 = $(SRC1:.cpp=.o)
+OBJ2 = $(SRC2:.cu=.o)
+
+$(EXE): $(OBJ1) $(OBJ2) 
+	$(CXX) $(OBJ1) $(OBJ2) -o $(EXE) $(LINKFLAGS)
+
+$(OBJ1): $(SRC1) 
+	$(CXX) -c $(SRC1) $(CXXFLAGS)
+
+$(OBJ2): $(SRC2) 
+	$(CXX) -c $(SRC2) $(CXXFLAGS)
+
+clean: 
+	rm -f $(OBJ1) $(OBJ2) $(EXE)
+
